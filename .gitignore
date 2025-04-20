@@ -1,0 +1,8 @@
+venv/*
+sample/*
+output/*
+config/config.yaml
+*.pyc
+.coverage
+dist/*
+poetry.lock
