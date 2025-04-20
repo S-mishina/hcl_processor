@@ -1,0 +1,6 @@
+terraform_analysis/*
+test_data/*
+output.json
+output.pdf
+test1.py
+output.md
