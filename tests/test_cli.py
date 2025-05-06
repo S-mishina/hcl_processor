@@ -1,5 +1,5 @@
 import pytest
-from src.hcl_analytics.cli import parse_args
+from hcl_processor.cli import parse_args
 import sys
 
 def test_parse_args(monkeypatch):

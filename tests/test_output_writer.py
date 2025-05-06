@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, mock_open, MagicMock
 import json
 import pandas as pd
-from src.hcl_analytics.output_writer import (
+from hcl_processor.output_writer import (
     output_md,
     clean_cell,
     validate_template_placeholders,
@@ -23,7 +23,7 @@ def test_output_md_with_dict(tmp_path):
     with open(config['output']['json_path'], "w") as f:
         json.dump(data, f)
 
-    with patch("src.hcl_analytics.output_writer.os.remove") as mock_remove:
+    with patch("hcl_processor.output_writer.os.remove") as mock_remove:
         output_md("Test Title", config)
         with open(config['output']['markdown_path'], "r") as f:
             content = f.read()
@@ -43,7 +43,7 @@ def test_output_md_with_list(tmp_path):
     with open(config['output']['json_path'], "w") as f:
         json.dump(data, f)
 
-    with patch("src.hcl_analytics.output_writer.os.remove") as mock_remove:
+    with patch("hcl_processor.output_writer.os.remove") as mock_remove:
         output_md("Test Title", config)
         with open(config['output']['markdown_path'], "r") as f:
             content = f.read()

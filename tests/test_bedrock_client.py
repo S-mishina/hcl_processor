@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 import json
 from botocore.exceptions import EndpointConnectionError, ReadTimeoutError, ClientError
-from src.hcl_analytics.bedrock_client import aws_bedrock  # ← あなたの環境に合わせて修正
+from hcl_processor.bedrock_client import aws_bedrock  # ← あなたの環境に合わせて修正
 
 def build_config():
     return {
@@ -30,7 +30,7 @@ def build_system_config():
         }
     }
 
-@patch("src.hcl_analytics.bedrock_client.boto3.Session")
+@patch("hcl_processor.bedrock_client.boto3.Session")
 def test_aws_bedrock_success(mock_session):
     mock_client = MagicMock()
     mock_streaming_body = MagicMock()
@@ -47,7 +47,7 @@ def test_aws_bedrock_success(mock_session):
     result = aws_bedrock("prompt", "modules_data", build_config(), build_system_config())
     assert result == "response text"
 
-@patch("src.hcl_analytics.bedrock_client.boto3.Session")
+@patch("hcl_processor.bedrock_client.boto3.Session")
 @pytest.mark.parametrize("exception", [
     EndpointConnectionError(endpoint_url="test"),
     ReadTimeoutError(endpoint_url="test", error="timeout"),
@@ -62,7 +62,7 @@ def test_aws_bedrock_api_exceptions(mock_session, exception):
     with pytest.raises(type(exception)):
         aws_bedrock("prompt", "modules_data", build_config(), build_system_config())
 
-@patch("src.hcl_analytics.bedrock_client.boto3.Session")
+@patch("hcl_processor.bedrock_client.boto3.Session")
 def test_aws_bedrock_attribute_error(mock_session):
     mock_client = MagicMock()
     mock_response = {"body": None}  # .read() will raise AttributeError
@@ -72,7 +72,7 @@ def test_aws_bedrock_attribute_error(mock_session):
     with pytest.raises(AttributeError):
         aws_bedrock("prompt", "modules_data", build_config(), build_system_config())
 
-@patch("src.hcl_analytics.bedrock_client.boto3.Session")
+@patch("hcl_processor.bedrock_client.boto3.Session")
 def test_aws_bedrock_json_decode_error(mock_session):
     mock_client = MagicMock()
     mock_streaming_body = MagicMock()
@@ -87,7 +87,7 @@ def test_aws_bedrock_json_decode_error(mock_session):
     with pytest.raises(json.JSONDecodeError):
         aws_bedrock("prompt", "modules_data", build_config(), build_system_config())
 
-@patch("src.hcl_analytics.bedrock_client.boto3.Session")
+@patch("hcl_processor.bedrock_client.boto3.Session")
 def test_aws_bedrock_modules_disabled(mock_session):
     mock_client = MagicMock()
     mock_streaming_body = MagicMock()
@@ -102,7 +102,7 @@ def test_aws_bedrock_modules_disabled(mock_session):
     result = aws_bedrock("prompt", "modules_data", config, build_system_config())
     assert result == "response text"
 
-@patch("src.hcl_analytics.bedrock_client.boto3.Session")
+@patch("hcl_processor.bedrock_client.boto3.Session")
 def test_aws_bedrock_modules_data_none(mock_session):
     mock_client = MagicMock()
     mock_streaming_body = MagicMock()
@@ -114,7 +114,7 @@ def test_aws_bedrock_modules_data_none(mock_session):
     result = aws_bedrock("prompt", None, build_config(), build_system_config())
     assert result == "response text"
 
-@patch("src.hcl_analytics.bedrock_client.boto3.Session")
+@patch("hcl_processor.bedrock_client.boto3.Session")
 def test_aws_bedrock_defaults_used(mock_session):
     mock_client = MagicMock()
     mock_streaming_body = MagicMock()
