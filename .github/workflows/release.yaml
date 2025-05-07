@@ -30,4 +30,4 @@ jobs:
         env:
           API_TOKEN: ${{ secrets.PIP_SECRET }}
         run: |
-            poetry publish --repository myrepo -u __token__ -p $API_TOKEN
+            poetry publish --repository h_processor -u __token__ -p $API_TOKEN
