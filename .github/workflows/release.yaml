@@ -26,6 +26,10 @@ jobs:
         run: |
           poetry build
 
+      - name: Configure Poetry
+        run: |
+          poetry config repositories.h_processor https://upload.pypi.org/legacy/
+          poetry config http-basic.h_processor __token__ ${{ secrets.PIP_SECRET }}
       - name: Publish to PyPI
         env:
           API_TOKEN: ${{ secrets.PIP_SECRET }}
