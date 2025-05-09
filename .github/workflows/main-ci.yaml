@@ -63,4 +63,4 @@ jobs:
             echo "No changes in third_party_licenses.md. Skipping commit, push, and PR creation."
           fi
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
