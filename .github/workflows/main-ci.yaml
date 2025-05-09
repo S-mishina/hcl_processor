@@ -48,17 +48,19 @@ jobs:
       - name: Generate third-party licenses
         run: |
           poetry run pip-licenses --format=markdown --output-file=third_party_licenses.md
-      - name: Commit and push changes
+      - name: Commit, push changes to new branch, and create PR
         run: |
+          BRANCH_NAME="update-licenses-$(date +%s)"
           git config --local user.name "github-actions"
           git config --local user.email "github-actions@github.com"
           if [ -n "$(git status --porcelain third_party_licenses.md)" ]; then
+            git checkout -b $BRANCH_NAME
             git add third_party_licenses.md
             git commit -m "Update third-party licenses"
-            git push
+            git push origin $BRANCH_NAME
+            gh pr create --title "Update third-party licenses" --body "This PR updates the third_party_licenses.md file." --head $BRANCH_NAME --base main
           else
-            echo "No changes in third_party_licenses.md. Skipping commit and push."
+            echo "No changes in third_party_licenses.md. Skipping commit, push, and PR creation."
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
