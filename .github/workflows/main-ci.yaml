@@ -56,7 +56,7 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
       - name: Commit, push changes to new branch, and create PR
         run: |
-          BRANCH_NAME="update-licenses-$(date +%s)"
+          BRANCH_NAME="update-licenses"
           git config --local user.name "github-actions"
           git config --local user.email "github-actions@github.com"
           if [ -n "$(git status --porcelain third_party_licenses.md)" ]; then
