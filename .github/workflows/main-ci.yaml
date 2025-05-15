@@ -62,7 +62,7 @@ jobs:
           if [ -n "$(git status --porcelain third_party_licenses.md)" ]; then
             git checkout -b $BRANCH_NAME
             git add third_party_licenses.md
-            git commit -m "Update third-party licenses"
+            git commit -s -m "Update third-party licenses"
             git push origin $BRANCH_NAME
             gh pr create --title "Update third-party licenses" --body "This PR updates the third_party_licenses.md file." --head $BRANCH_NAME --base main
           else
