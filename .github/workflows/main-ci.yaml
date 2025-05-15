@@ -70,7 +70,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
   release-page:
-    # if: github.event_name == 'push' && github.event.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.event.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
