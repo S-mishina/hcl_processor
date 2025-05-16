@@ -59,7 +59,7 @@ jobs:
           git config --local user.name "github-actions"
           git config --local user.email "github-actions@github.com"
           if [ -n "$(git status --porcelain third_party_licenses.md)" ]; then
-            git checkout -b $BRANCH_NAME
+            git switch -c $BRANCH_NAME
             git add third_party_licenses.md
             git commit -s -m "Update third-party licenses"
             git push origin $BRANCH_NAME
