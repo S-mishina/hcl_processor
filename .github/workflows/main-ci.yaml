@@ -62,6 +62,7 @@ jobs:
             git switch -C $BRANCH_NAME
             git add third_party_licenses.md
             git commit -s -m "Update third-party licenses"
+            git pull origin update-licenses --rebase
             git push origin $BRANCH_NAME
             gh pr create --title "Update third-party licenses" --body "This PR updates the third_party_licenses.md file." --head $BRANCH_NAME --base main
           else
