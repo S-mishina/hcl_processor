@@ -16,7 +16,7 @@
 | python-hcl2               | 7.2.0       | MIT License                          |
 | pytz                      | 2025.2      | MIT License                          |
 | referencing               | 0.36.2      | UNKNOWN                              |
-| rpds-py                   | 0.24.0      | MIT                                  |
+| rpds-py                   | 0.25.0      | MIT                                  |
 | s3transfer                | 0.12.0      | Apache Software License              |
 | six                       | 1.17.0      | MIT License                          |
 | tabulate                  | 0.9.0       | MIT License                          |
