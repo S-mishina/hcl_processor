@@ -138,7 +138,7 @@ class TestConfigLoader(unittest.TestCase):
 
         config = load_config(self.config_path)
 
-        # テンプレートファイルの設定が保持されていることを確認
+        # Verify that the template file configuration is retained
         self.assertEqual(
             config["output"]["template"],
             {"path": "template.md.j2"}
