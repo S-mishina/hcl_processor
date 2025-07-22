@@ -73,13 +73,13 @@ class TestOutputWriter(unittest.TestCase):
         self.assertNotIn("extra_field", content)
 
     def test_custom_template_string(self):
-        # テストデータ
+        # Test data
         test_data = [{"name": "test", "value": "123"}]
         
         with open(self.json_path, "w") as f:
             json.dump(test_data, f)
 
-        # カスタムテンプレートを使用するconfig
+        # Config using a custom template
         config = {
             "output": {
                 "json_path": self.json_path,
