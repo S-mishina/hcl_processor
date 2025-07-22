@@ -18,7 +18,7 @@ class TestOutputWriter(unittest.TestCase):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_default_template(self):
-        # テストデータ
+        # Test data
         test_data = [
             {
                 "name": "test_alert",
