@@ -48,9 +48,12 @@ def output_md(md_title, config):
         env = Environment(loader=FileSystemLoader(template_dir), autoescape=False)
         try:
             template = env.get_template(template_file)
-        except Exception as e:
-            logger.error(f"Failed to load template file: {e}")
-            raise ValueError(f"Invalid template file: {str(e)}")
+        except TemplateNotFound as e:
+            logger.error(f"Template file not found: {e}")
+            raise ValueError(f"Template file not found: {str(e)}")
+        except TemplateSyntaxError as e:
+            logger.error(f"Syntax error in template file: {e}")
+            raise ValueError(f"Syntax error in template file: {str(e)}")
     else:
         # Use template string from config or default template
         template_str = template_config if isinstance(template_config, str) else get_default_template()
