@@ -128,7 +128,7 @@ class TestOutputWriter(unittest.TestCase):
         self.assertIn("* test: 123", content)
 
     def test_missing_template(self):
-        # テストデータ
+        # Test data
         test_data = [{"name": "test"}]
         
         with open(self.json_path, "w") as f:
