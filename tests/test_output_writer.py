@@ -134,7 +134,7 @@ class TestOutputWriter(unittest.TestCase):
         with open(self.json_path, "w") as f:
             json.dump(test_data, f)
 
-        # テンプレートが指定されていないconfig
+        # Config where no template is specified
         config = {
             "output": {
                 "json_path": self.json_path,
