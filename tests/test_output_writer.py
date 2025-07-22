@@ -57,7 +57,7 @@ class TestOutputWriter(unittest.TestCase):
         with open(self.md_path, "r") as f:
             content = f.read()
             
-        # 期待される出力の検証
+        # Verify the expected output
         expected_header = "| " + " | ".join(config["schema_columns"]) + " |"
         expected_row = "| " + " | ".join([
             "test_alert",
