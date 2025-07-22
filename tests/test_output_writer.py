@@ -14,7 +14,7 @@ class TestOutputWriter(unittest.TestCase):
         self.md_path = os.path.join(self.temp_dir, "test.md")
 
     def tearDown(self):
-        # 一時ディレクトリとその中身を再帰的に削除
+        # Recursively delete the temporary directory and its contents
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_default_template(self):
