@@ -143,7 +143,7 @@ class TestOutputWriter(unittest.TestCase):
             "schema_columns": ["name"]
         }
 
-        # デフォルトテンプレートが使用されることを確認
+        # Verify that the default template is used
         output_md("No Template Test", config)
 
         with open(self.md_path, "r") as f:
