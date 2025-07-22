@@ -2,7 +2,6 @@ import json
 import logging
 import os
 import re
-import shutil
 
 import jsonschema
 from jinja2 import Environment, BaseLoader, FileSystemLoader

@@ -3,7 +3,6 @@ import os
 import shutil
 import tempfile
 import unittest
-from unittest.mock import patch
 
 from src.hcl_processor.output_writer import output_md
 
