@@ -109,7 +109,7 @@ class TestOutputWriter(unittest.TestCase):
         with open(template_path, "w") as f:
             f.write("## {{ title }}\n{% for item in data %}* {{ item.name }}: {{ item.value }}{% endfor %}")
 
-        # テンプレートファイルを使用するconfig
+        # Config using a template file
         config = {
             "output": {
                 "json_path": self.json_path,
