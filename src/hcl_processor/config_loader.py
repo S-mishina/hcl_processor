@@ -114,6 +114,7 @@ def load_config(config_path):
                 "properties": {
                     "aws_profile": {"type": "string"},
                     "aws_region": {"type": "string"},
+                    "model_id": {"type": "string"},
                     "system_prompt": {"type": "string"},
                     "payload": {
                         "type": "object",
