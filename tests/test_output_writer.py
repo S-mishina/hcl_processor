@@ -30,7 +30,7 @@ class TestOutputWriter(unittest.TestCase):
             }
         ]
         
-        # JSON ファイルの作成
+        # Create a JSON file
         with open(self.json_path, "w") as f:
             json.dump(test_data, f)
 
