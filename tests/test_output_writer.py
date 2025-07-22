@@ -52,7 +52,7 @@ class TestOutputWriter(unittest.TestCase):
         # Execute the test
         output_md("Test Title", config)
 
-        # 結果の検証
+        # Verify the results
         self.assertTrue(os.path.exists(self.md_path))
         with open(self.md_path, "r") as f:
             content = f.read()
