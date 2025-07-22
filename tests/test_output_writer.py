@@ -104,7 +104,7 @@ class TestOutputWriter(unittest.TestCase):
         with open(self.json_path, "w") as f:
             json.dump(test_data, f)
 
-        # テンプレートファイルの作成
+        # Create the template file
         template_path = os.path.join(self.temp_dir, "test_template.md.j2")
         with open(template_path, "w") as f:
             f.write("## {{ title }}\n{% for item in data %}* {{ item.name }}: {{ item.value }}{% endfor %}")
