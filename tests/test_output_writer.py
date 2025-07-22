@@ -49,7 +49,7 @@ class TestOutputWriter(unittest.TestCase):
             ]
         }
 
-        # テスト実行
+        # Execute the test
         output_md("Test Title", config)
 
         # 結果の検証
