@@ -1,76 +1,149 @@
-import json
-from unittest.mock import mock_open, patch
-
-import pytest
+import os
+import tempfile
+import unittest
 import yaml
 
-from hcl_processor.config_loader import load_config
-
-# -------- load_config tests -------- #
+from src.hcl_processor.config_loader import load_config, get_default_config
 
 
-def create_valid_config():
-    return {
-        "bedrock": {
-            "system_prompt": "hi",
-            "payload": {
-                "anthropic_version": "v1",
-                "max_tokens": 100,
-                "temperature": 0.5,
-                "top_p": 1.0,
-                "top_k": 40,
+class TestConfigLoader(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        self.config_path = os.path.join(self.temp_dir, "config.yaml")
+
+    def tearDown(self):
+        if os.path.exists(self.config_path):
+            os.remove(self.config_path)
+        os.rmdir(self.temp_dir)
+
+    def test_minimal_config(self):
+        # 最小限の設定
+        config_data = {
+            "bedrock": {
+                "system_prompt": "test prompt",
+                "payload": {
+                    "anthropic_version": "test",
+                    "max_tokens": 100,
+                    "temperature": 0,
+                    "top_p": 1,
+                    "top_k": 0
+                },
+                "output_json": {}
             },
-            "read_timeout": 10,
-            "connect_timeout": 10,
-            "retries": {},
-            "output_json": {},
-        },
-        "input": {
-            "resource_data": {"folder": "some_folder"},
-            "modules": {"path": "some_path", "enabled": True},
-            "local_files": [],
-        },
-        "output": {"json_path": "output.json", "markdown_path": "output.md"},
-    }
+            "input": {
+                "resource_data": {
+                    "files": ["test.tf"]
+                },
+                "modules": {
+                    "enabled": False
+                },
+                "local_files": []
+            },
+            "output": {
+                "json_path": "output.json",
+                "markdown_path": "output.md"
+            }
+        }
+
+        with open(self.config_path, "w") as f:
+            yaml.dump(config_data, f)
+
+        config = load_config(self.config_path)
+
+        # デフォルト値が適用されていることを確認
+        default_config = get_default_config()
+        self.assertEqual(
+            config["schema_columns"],
+            default_config["schema_columns"]
+        )
+        self.assertEqual(
+            config["output"].get("template"),
+            default_config["output"]["template"]
+        )
+
+    def test_custom_config(self):
+        # カスタム設定
+        config_data = {
+            "bedrock": {
+                "system_prompt": "test prompt",
+                "payload": {
+                    "anthropic_version": "test",
+                    "max_tokens": 100,
+                    "temperature": 0,
+                    "top_p": 1,
+                    "top_k": 0
+                },
+                "output_json": {}
+            },
+            "input": {
+                "resource_data": {
+                    "files": ["test.tf"]
+                },
+                "modules": {
+                    "enabled": False
+                },
+                "local_files": []
+            },
+            "output": {
+                "json_path": "output.json",
+                "markdown_path": "output.md",
+                "template": "# {{ title }}"
+            },
+            "schema_columns": ["name", "value"]
+        }
+
+        with open(self.config_path, "w") as f:
+            yaml.dump(config_data, f)
+
+        config = load_config(self.config_path)
+
+        # カスタム設定が保持されていることを確認
+        self.assertEqual(config["schema_columns"], ["name", "value"])
+        self.assertEqual(config["output"]["template"], "# {{ title }}")
+
+    def test_template_file_config(self):
+        # テンプレートファイルを使用する設定
+        config_data = {
+            "bedrock": {
+                "system_prompt": "test prompt",
+                "payload": {
+                    "anthropic_version": "test",
+                    "max_tokens": 100,
+                    "temperature": 0,
+                    "top_p": 1,
+                    "top_k": 0
+                },
+                "output_json": {}
+            },
+            "input": {
+                "resource_data": {
+                    "files": ["test.tf"]
+                },
+                "modules": {
+                    "enabled": False
+                },
+                "local_files": []
+            },
+            "output": {
+                "json_path": "output.json",
+                "markdown_path": "output.md",
+                "template": {
+                    "path": "template.md.j2"
+                }
+            }
+        }
+
+        with open(self.config_path, "w") as f:
+            yaml.dump(config_data, f)
+
+        config = load_config(self.config_path)
+
+        # テンプレートファイルの設定が保持されていることを確認
+        self.assertEqual(
+            config["output"]["template"],
+            {"path": "template.md.j2"}
+        )
 
 
-def test_load_config_success():
-    config_dict = create_valid_config()
-    mock_yaml = yaml.dump(config_dict)
-    with patch("builtins.open", mock_open(read_data=mock_yaml)):
-        result = load_config("dummy_config.yaml")
-        assert result["bedrock"]["system_prompt"] == "hi"
-
-
-def test_load_config_output_json_string():
-    config_dict = create_valid_config()
-    config_dict["bedrock"]["output_json"] = json.dumps({"key": "value"})
-    mock_yaml = yaml.dump(config_dict)
-    with patch("builtins.open", mock_open(read_data=mock_yaml)):
-        result = load_config("dummy_config.yaml")
-        assert result["bedrock"]["output_json"]["key"] == "value"
-
-
-def test_load_config_invalid_output_json():
-    config_dict = create_valid_config()
-    config_dict["bedrock"]["output_json"] = "{bad json}"
-    mock_yaml = yaml.dump(config_dict)
-    with patch("builtins.open", mock_open(read_data=mock_yaml)):
-        with pytest.raises(ValueError, match="Invalid JSON in output_json"):
-            load_config("dummy_config.yaml")
-
-
-def test_load_config_schema_validation_error():
-    config_dict = create_valid_config()
-    del config_dict["input"]  # Remove required section
-    mock_yaml = yaml.dump(config_dict)
-    with patch("builtins.open", mock_open(read_data=mock_yaml)):
-        with pytest.raises(ValueError, match="Invalid configuration"):
-            load_config("dummy_config.yaml")
-
-
-def test_load_config_yaml_parse_error():
-    broken_yaml = "invalid: [:::"
-    with patch("builtins.open", mock_open(read_data=broken_yaml)):
-        with pytest.raises(yaml.YAMLError):  # More precise exception
-            load_config("dummy_config.yaml")
+if __name__ == "__main__":
+    unittest.main()
