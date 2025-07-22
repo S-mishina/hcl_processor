@@ -97,7 +97,7 @@ class TestConfigLoader(unittest.TestCase):
 
         config = load_config(self.config_path)
 
-        # カスタム設定が保持されていることを確認
+        # Verify that custom settings are retained
         self.assertEqual(config["schema_columns"], ["name", "value"])
         self.assertEqual(config["output"]["template"], "# {{ title }}")
 
