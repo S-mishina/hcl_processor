@@ -17,7 +17,7 @@ class TestConfigLoader(unittest.TestCase):
         os.rmdir(self.temp_dir)
 
     def test_minimal_config(self):
-        # 最小限の設定
+        # Minimal configuration
         config_data = {
             "bedrock": {
                 "system_prompt": "test prompt",
