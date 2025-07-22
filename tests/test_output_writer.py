@@ -34,7 +34,7 @@ class TestOutputWriter(unittest.TestCase):
         with open(self.json_path, "w") as f:
             json.dump(test_data, f)
 
-        # 最小構成のconfig
+        # Minimal configuration
         config = {
             "output": {
                 "json_path": self.json_path,
