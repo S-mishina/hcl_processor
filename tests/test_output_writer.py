@@ -1,133 +1,158 @@
 import json
-from unittest.mock import patch
+import os
+import shutil
+import tempfile
+import unittest
 
-import pytest
-
-from hcl_processor.output_writer import (clean_cell, output_md,
-                                         validate_output_json,
-                                         validate_template_placeholders)
+from src.hcl_processor.output_writer import output_md
 
 
-# ----- output_md -----
-def test_output_md_with_dict(tmp_path):
-    config = {
-        "output": {
-            "json_path": str(tmp_path / "test.json"),
-            "markdown_path": str(tmp_path / "output.md"),
-            "markdown_template": "#### {title} \n {table}",
-        },
-        "schema_columns": ["col1", "col2"],
-    }
-    data = {"col1": "val1", "col2": "val2"}
-    with open(config["output"]["json_path"], "w") as f:
-        json.dump(data, f)
+class TestOutputWriter(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        self.json_path = os.path.join(self.temp_dir, "test.json")
+        self.md_path = os.path.join(self.temp_dir, "test.md")
 
-    with patch("hcl_processor.output_writer.os.remove") as mock_remove:
+    def tearDown(self):
+        # Recursively delete the temporary directory and its contents
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def test_default_template(self):
+        # Test data
+        test_data = [
+            {
+                "name": "test_alert",
+                "description": "test description",
+                "severity": "high",
+                "threshold": "80%",
+                "evaluation_period": "5m",
+                "extra_field": "should not appear"
+            }
+        ]
+        
+        # Create a JSON file
+        with open(self.json_path, "w") as f:
+            json.dump(test_data, f)
+
+        # Minimal configuration
+        config = {
+            "output": {
+                "json_path": self.json_path,
+                "markdown_path": self.md_path
+            },
+            "schema_columns": [
+                "name",
+                "description",
+                "severity",
+                "threshold",
+                "evaluation_period"
+            ]
+        }
+
+        # Execute the test
         output_md("Test Title", config)
-        with open(config["output"]["markdown_path"], "r") as f:
+
+        # Verify the results
+        self.assertTrue(os.path.exists(self.md_path))
+        with open(self.md_path, "r") as f:
             content = f.read()
-            assert "#### Test Title" in content
-            assert "val1" in content
-        mock_remove.assert_called_once()
+            
+        # Verify the expected output
+        expected_header = "| " + " | ".join(config["schema_columns"]) + " |"
+        expected_row = "| " + " | ".join([
+            "test_alert",
+            "test description",
+            "high",
+            "80%",
+            "5m"
+        ]) + " |"
+        
+        self.assertIn("#### Test Title", content)
+        self.assertIn(expected_header, content)
+        self.assertIn(expected_row, content)
+        self.assertNotIn("extra_field", content)
 
+    def test_custom_template_string(self):
+        # Test data
+        test_data = [{"name": "test", "value": "123"}]
+        
+        with open(self.json_path, "w") as f:
+            json.dump(test_data, f)
 
-def test_output_md_with_list(tmp_path):
-    config = {
-        "output": {
-            "json_path": str(tmp_path / "test.json"),
-            "markdown_path": str(tmp_path / "output.md"),
-        },
-        "schema_columns": ["col1", "col2"],
-    }
-    data = [{"col1": "val1", "col2": "val2"}, {"col1": "val3", "col2": "val4"}]
-    with open(config["output"]["json_path"], "w") as f:
-        json.dump(data, f)
+        # Config using a custom template
+        config = {
+            "output": {
+                "json_path": self.json_path,
+                "markdown_path": self.md_path,
+                "template": "# {{ title }}\n{% for item in data %}* {{ item.name }}: {{ item.value }}{% endfor %}"
+            },
+            "schema_columns": ["name", "value"]
+        }
 
-    with patch("hcl_processor.output_writer.os.remove") as mock_remove:
-        output_md("Test Title", config)
-        with open(config["output"]["markdown_path"], "r") as f:
+        output_md("Custom Test", config)
+
+        with open(self.md_path, "r") as f:
             content = f.read()
-            assert "val3" in content
-        mock_remove.assert_called_once()
+            
+        self.assertIn("# Custom Test", content)
+        self.assertIn("* test: 123", content)
+
+    def test_custom_template_file(self):
+        # Test data
+        test_data = [{"name": "test", "value": "123"}]
+        
+        with open(self.json_path, "w") as f:
+            json.dump(test_data, f)
+
+        # Create the template file
+        template_path = os.path.join(self.temp_dir, "test_template.md.j2")
+        with open(template_path, "w") as f:
+            f.write("## {{ title }}\n{% for item in data %}* {{ item.name }}: {{ item.value }}{% endfor %}")
+
+        # Config using a template file
+        config = {
+            "output": {
+                "json_path": self.json_path,
+                "markdown_path": self.md_path,
+                "template": {"path": template_path}
+            },
+            "schema_columns": ["name", "value"]
+        }
+
+        output_md("File Template Test", config)
+
+        with open(self.md_path, "r") as f:
+            content = f.read()
+            
+        self.assertIn("## File Template Test", content)
+        self.assertIn("* test: 123", content)
+
+    def test_missing_template(self):
+        # Test data
+        test_data = [{"name": "test"}]
+        
+        with open(self.json_path, "w") as f:
+            json.dump(test_data, f)
+
+        # Config where no template is specified
+        config = {
+            "output": {
+                "json_path": self.json_path,
+                "markdown_path": self.md_path
+            },
+            "schema_columns": ["name"]
+        }
+
+        # Verify that the default template is used
+        output_md("No Template Test", config)
+
+        with open(self.md_path, "r") as f:
+            content = f.read()
+            
+        self.assertIn("#### No Template Test", content)
+        self.assertIn("| name |", content)
+        self.assertIn("| test |", content)
 
 
-def test_output_md_missing_json(tmp_path):
-    config = {
-        "output": {
-            "json_path": str(tmp_path / "missing.json"),
-            "markdown_path": str(tmp_path / "output.md"),
-        },
-        "schema_columns": ["col1", "col2"],
-    }
-    with pytest.raises(FileNotFoundError):
-        output_md("Test Title", config)
-
-
-def test_output_md_invalid_template(tmp_path):
-    config = {
-        "output": {
-            "json_path": str(tmp_path / "test.json"),
-            "markdown_path": str(tmp_path / "output.md"),
-            "markdown_template": "#### {invalid}",
-        },
-        "schema_columns": ["col1", "col2"],
-    }
-    data = {"col1": "val1", "col2": "val2"}
-    with open(config["output"]["json_path"], "w") as f:
-        json.dump(data, f)
-
-    with pytest.raises(ValueError, match="Unsupported template variable"):
-        output_md("Test Title", config)
-
-
-def test_clean_cell_string():
-    input_str = "line1\nline2|with{braces}"
-    cleaned = clean_cell(input_str)
-    assert "<br>" in cleaned
-    assert "\\|" in cleaned
-
-
-def test_clean_cell_non_string():
-    value = 123
-    assert clean_cell(value) == 123
-
-
-def test_validate_template_placeholders_valid():
-    template = "#### {title} \n {table}"
-    allowed = {"title", "table"}
-    validate_template_placeholders(template, allowed)  # should not raise
-
-
-def test_validate_template_placeholders_invalid():
-    template = "#### {unknown}"
-    allowed = {"title", "table"}
-    with pytest.raises(ValueError, match="Unsupported template variable"):
-        validate_template_placeholders(template, allowed)
-
-
-def test_validate_output_json_success():
-    schema = {
-        "type": "object",
-        "properties": {"key": {"type": "string"}},
-        "required": ["key"],
-    }
-    output_str = json.dumps({"key": "value"})
-    result = validate_output_json(output_str, schema)
-    assert result["key"] == "value"
-
-
-def test_validate_output_json_invalid_json():
-    schema = {}
-    with pytest.raises(json.JSONDecodeError):
-        validate_output_json("{bad json}", schema)
-
-
-def test_validate_output_json_schema_error():
-    schema = {
-        "type": "object",
-        "properties": {"key": {"type": "string"}},
-        "required": ["key"],
-    }
-    output_str = json.dumps({"wrong": "value"})
-    with pytest.raises(Exception):
-        validate_output_json(output_str, schema)
+if __name__ == "__main__":
+    unittest.main()

@@ -1,5 +1,6 @@
 import json
 import logging
+from copy import deepcopy
 
 import jsonschema
 import yaml
@@ -7,6 +8,49 @@ import yaml
 from .config.system_config import get_system_config
 
 logger = logging.getLogger(__name__)
+
+
+def get_default_config():
+    """
+    Returns the default configuration for the HCL processor.
+    """
+    return {
+        "output": {
+            "template": """#### {{ title }}
+
+{% if description %}{{ description }}{% endif %}
+
+| {% for col in columns %}{{ col }} |{% endfor %}
+|{% for col in columns %}:---|{% endfor %}
+{% for row in data %}| {% for col in columns %}{{ row[col] }} |{% endfor %}
+{% endfor %}""",
+        },
+        "schema_columns": [
+            "name",
+            "description",
+            "severity",
+            "threshold",
+            "evaluation_period"
+        ]
+    }
+
+
+def merge_defaults(config, defaults):
+    """
+    Recursively merge default values into config.
+    Args:
+        config (dict): Configuration to update
+        defaults (dict): Default values to merge
+    Returns:
+        dict: Updated configuration
+    """
+    result = deepcopy(config)
+    for key, value in defaults.items():
+        if key not in result:
+            result[key] = deepcopy(value)
+        elif isinstance(value, dict) and isinstance(result[key], dict):
+            result[key] = merge_defaults(result[key], value)
+    return result
 
 
 def load_system_config(system_config=get_system_config()):
@@ -53,11 +97,14 @@ def load_config(config_path):
     Raises:
         ValueError: If the configuration file is not found or cannot be loaded.
     """
-    # TODO: Might need handling.
-
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
     logger.debug(f"Loaded config:\n {config}")
+
+    # Load default configuration
+    default_config = get_default_config()
+
+    # Define schema
     schema = {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -66,7 +113,7 @@ def load_config(config_path):
                 "type": "object",
                 "properties": {
                     "aws_profile": {"type": "string"},
-                    "region": {"type": "string"},
+                    "aws_region": {"type": "string"},
                     "system_prompt": {"type": "string"},
                     "payload": {
                         "type": "object",
@@ -156,13 +203,27 @@ def load_config(config_path):
                 },
                 "required": ["resource_data", "modules", "local_files"],
             },
-            "schema_columns": {"type": "array", "items": {"type": "string"}},
+            "schema_columns": {
+                "type": "array",
+                "items": {"type": "string"}
+            },
             "output": {
                 "type": "object",
                 "properties": {
                     "json_path": {"type": "string"},
                     "markdown_path": {"type": "string"},
-                    "markdown_template": {"type": "string"},
+                    "template": {
+                        "oneOf": [
+                            {"type": "string"},
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "path": {"type": "string"}
+                                },
+                                "required": ["path"]
+                            }
+                        ]
+                    }
                 },
                 "required": ["json_path", "markdown_path"],
             },
@@ -180,7 +241,13 @@ def load_config(config_path):
                 raise ValueError(f"Invalid JSON in output_json: {e}")
 
     try:
+        # First validate the base configuration
         jsonschema.validate(instance=config, schema=schema)
+        
+        # Then merge with defaults
+        config = merge_defaults(config, default_config)
+        
+        logger.debug(f"Config after merging defaults:\n {config}")
+        return config
     except jsonschema.ValidationError as e:
         raise ValueError(f"Invalid configuration: {e.message}")
-    return config
