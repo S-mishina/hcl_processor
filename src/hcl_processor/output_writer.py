@@ -4,7 +4,7 @@ import os
 import re
 
 import jsonschema
-from jinja2 import Environment, BaseLoader, FileSystemLoader
+from jinja2 import Environment, BaseLoader, FileSystemLoader, TemplateNotFound, TemplateSyntaxError
 
 logger = logging.getLogger(__name__)
 
