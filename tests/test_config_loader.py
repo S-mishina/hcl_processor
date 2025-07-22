@@ -62,7 +62,7 @@ class TestConfigLoader(unittest.TestCase):
         )
 
     def test_custom_config(self):
-        # カスタム設定
+        # Custom configuration
         config_data = {
             "bedrock": {
                 "system_prompt": "test prompt",
