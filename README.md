@@ -31,7 +31,7 @@ It supports automated analysis and documentation of infrastructure configuration
 > [!warning]
 > Currently the model is only enabled for anthropic.claude-3-5-sonnet-20240620-v1:0.
 The default region is us-east-1.
-If you want to change it, please specify `bedrock.region` in confg.yaml.
+If you want to change it, please specify `bedrock.aws_region` in confg.yaml.
 
 - ✅ Validate YAML configuration files with JSON Schema
 - ✅ Reading and parsing HCL files and module files
@@ -637,7 +637,7 @@ The configuration file (`config.yaml`) must follow the structure below.
 | Field            | Type      | Required | Description                                                            |
 |------------------|-----------|----------|------------------------------------------------------------------------|
 | aws_profile      | string    | ❌       | AWS profile to use for authentication. default aws profile env                                |
-| region           | string    | ❌       | AWS region where Bedrock is deployed. default us-east-1                                 |
+| aws_region           | string    | ❌       | AWS region where Bedrock is deployed. default us-east-1                                 |
 | system_prompt    | string    | ✅       | System-level prompt to prepend to the Bedrock request.                |
 | payload          | object    | ✅       | API parameters for the Bedrock model.                                 |
 | └ anthropic_version | string | ✅       | Anthropic API version.                                                |
