@@ -102,7 +102,7 @@ class TestConfigLoader(unittest.TestCase):
         self.assertEqual(config["output"]["template"], "# {{ title }}")
 
     def test_template_file_config(self):
-        # テンプレートファイルを使用する設定
+        # Configuration using template file
         config_data = {
             "bedrock": {
                 "system_prompt": "test prompt",
