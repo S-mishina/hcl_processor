@@ -50,7 +50,7 @@ class TestConfigLoader(unittest.TestCase):
 
         config = load_config(self.config_path)
 
-        # デフォルト値が適用されていることを確認
+        # Verify that default values are applied
         default_config = get_default_config()
         self.assertEqual(
             config["schema_columns"],
