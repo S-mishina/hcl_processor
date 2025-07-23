@@ -60,7 +60,13 @@ jobs:
           git config --local user.email "github-actions@github.com"
 
           if [ -n "$(git status --porcelain third_party_licenses.md)" ]; then
-            git switch -C $BRANCH_NAME
+            if git show-ref --verify --quiet refs/heads/$BRANCH_NAME; then
+              echo "Branch $BRANCH_NAME already exists. Switching to it."
+              git switch $BRANCH_NAME
+              git pull origin $BRANCH_NAME
+            else
+              echo "Creating new branch $BRANCH_NAME."
+            fi
             git add third_party_licenses.md
             git commit -s -m "Update third-party licenses"
             git push origin $BRANCH_NAME
