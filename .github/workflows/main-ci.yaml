@@ -60,17 +60,23 @@ jobs:
           git config --local user.email "github-actions@github.com"
 
           if [ -n "$(git status --porcelain third_party_licenses.md)" ]; then
-            if git show-ref --verify --quiet refs/heads/$BRANCH_NAME; then
-              echo "Branch $BRANCH_NAME already exists. Switching to it."
-              git switch $BRANCH_NAME
+            if git ls-remote --exit-code --heads origin $BRANCH_NAME > /dev/null 2>&1; then
+              echo "Remote branch $BRANCH_NAME exists. Fetching and switching to it."
+              git fetch origin $BRANCH_NAME
+              git checkout -b $BRANCH_NAME origin/$BRANCH_NAME || git checkout $BRANCH_NAME
               git pull origin $BRANCH_NAME
             else
               echo "Creating new branch $BRANCH_NAME."
+              git checkout -b $BRANCH_NAME
             fi
             git add third_party_licenses.md
             git commit -s -m "Update third-party licenses"
             git push origin $BRANCH_NAME
-            gh pr create --title "Update third-party licenses" --body "This PR updates the third_party_licenses.md file." --head $BRANCH_NAME --base main
+            if ! gh pr view $BRANCH_NAME --json state > /dev/null 2>&1; then
+              gh pr create --title "Update third-party licenses" --body "This PR updates the third_party_licenses.md file." --head $BRANCH_NAME --base main
+            else
+              echo "PR already exists for branch $BRANCH_NAME"
+            fi
           else
             echo "No changes in third_party_licenses.md. Skipping commit, push, and PR creation."
           fi
