@@ -6,7 +6,7 @@
 | PyYAML                    | 6.0.2       | MIT License                          |
 | attrs                     | 25.3.0      | UNKNOWN                              |
 | boto3                     | 1.39.10     | Apache Software License              |
-| botocore                  | 1.39.10     | Apache Software License              |
+| botocore                  | 1.39.11     | Apache Software License              |
 | hcl-processor             | 0.10.3a0    | UNKNOWN                              |
 | jmespath                  | 1.0.1       | MIT License                          |
 | jsonschema                | 4.25.0      | UNKNOWN                              |
