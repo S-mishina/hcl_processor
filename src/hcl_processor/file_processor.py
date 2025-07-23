@@ -51,6 +51,9 @@ def run_hcl_file_workflow(file_path, config, system_config):
             # TODO: Need to consider creating a temporary file.
             with open(config["output"]["json_path"], "w", encoding="utf-8") as f:
                 json.dump(validated_output, f, ensure_ascii=False, indent=4)
+                logger.info(
+                    f"Successfully wrote JSON output to {json.dump(validated_output, f, ensure_ascii=False, indent=4)}"
+                )
         except Exception as e:
             logger.debug(f"{e}")
             logger.error(f"Error writing JSON output: {type(e).__name__}")

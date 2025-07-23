@@ -154,7 +154,7 @@ def aws_bedrock(prompt, modules_data, config, system_config):
             # Handle tool use response
             if "toolUse" in content:
                 tool_use = content["toolUse"]
-                logger.info(f"Tool use response: {json.dumps(tool_use, indent=2, ensure_ascii=False)}")
+                logger.debug(f"Tool use response: {json.dumps(tool_use, indent=2, ensure_ascii=False)}")
                 if tool_use["name"] == "json_validator":
                     result = json.dumps(tool_use["input"].get("monitors", []), ensure_ascii=False)
                     logger.debug(f"JSON validation result: {result}")
