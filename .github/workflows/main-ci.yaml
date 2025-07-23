@@ -61,14 +61,15 @@ jobs:
 
           if [ -n "$(git status --porcelain third_party_licenses.md)" ]; then
             if git ls-remote --exit-code --heads origin $BRANCH_NAME > /dev/null 2>&1; then
-              echo "Remote branch $BRANCH_NAME exists. Fetching and switching to it."
-              git fetch origin $BRANCH_NAME
-              git checkout -b $BRANCH_NAME origin/$BRANCH_NAME || git checkout $BRANCH_NAME
-              git pull origin $BRANCH_NAME
+              echo "Remote branch $BRANCH_NAME exists. Deleting and recreating it."
+              # Delete the remote branch and create a fresh one
+              git push origin --delete $BRANCH_NAME || echo "Failed to delete remote branch, continuing..."
+              git checkout -b $BRANCH_NAME
             else
               echo "Creating new branch $BRANCH_NAME."
               git checkout -b $BRANCH_NAME
             fi
+            
             git add third_party_licenses.md
             git commit -s -m "Update third-party licenses"
             git push origin $BRANCH_NAME
