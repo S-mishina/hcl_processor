@@ -86,7 +86,6 @@ def aws_bedrock(prompt, modules_data, config, system_config):
     final_system_prompt = final_system_prompt.replace(
         "{modules_data}", modules_data_str if modules_enabled else ""
     )
-    logger.info(f"Final system prompt: {final_system_prompt}")
     logger.info(f"Prompt: {prompt}")
     messages = [{"role": "user", "content": [{"text": prompt}]}]
     system = [{"text": final_system_prompt}]
