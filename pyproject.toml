@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "hcl-processor"
-version = "0.10.5-a"
+version = "0.10.6-a"
 description = "A tool for analyzing HCL files."
 authors = ["S-mishina <45090872+S-mishina@users.noreply.github.com>"]
 packages = [{ include = "hcl_processor", from = "src" }]
