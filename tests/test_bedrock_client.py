@@ -50,23 +50,40 @@ def build_system_config():
 @patch("hcl_processor.bedrock_client.boto3.Session")
 def test_aws_bedrock_success(mock_session):
     mock_client = MagicMock()
-    mock_streaming_body = MagicMock()
-    mock_streaming_body.read.return_value = json.dumps(
-        {"content": [{"text": "response text"}]}
-    ).encode("utf-8")
-
     mock_response = {
-        "ResponseMetadata": {},
-        "contentType": "application/json",
-        "body": mock_streaming_body,
+        "output": {
+            "message": {
+                "role": "assistant",
+                "content": [
+                    {
+                        "toolUse": {
+                            "toolUseId": "tooluse_test",
+                            "name": "json_validator",
+                            "input": {
+                                "monitor_name": "Test Monitor",
+                                "type": "query alert"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
     }
-    mock_client.invoke_model.return_value = mock_response
+    mock_client.converse.return_value = mock_response
     mock_session.return_value.client.return_value = mock_client
 
+    # Verify toolConfig is passed correctly
     result = aws_bedrock(
         "prompt", "modules_data", build_config(), build_system_config()
     )
-    assert result == "response text"
+    mock_client.converse.assert_called_once()
+    call_kwargs = mock_client.converse.call_args.kwargs
+    assert "toolConfig" in call_kwargs
+    input_schema = call_kwargs["toolConfig"]["tools"][0]["toolSpec"]["inputSchema"]["json"]
+    assert input_schema["type"] == "object"
+    assert input_schema["properties"] == build_config()["bedrock"]["output_json"].get("items", {}).get("properties", {})
+    expected = json.dumps([{"monitor_name": "Test Monitor", "type": "query alert"}], ensure_ascii=False)
+    assert result == expected
 
 
 @patch("hcl_processor.bedrock_client.boto3.Session")
@@ -81,7 +98,7 @@ def test_aws_bedrock_success(mock_session):
 )
 def test_aws_bedrock_api_exceptions(mock_session, exception):
     mock_client = MagicMock()
-    mock_client.invoke_model.side_effect = exception
+    mock_client.converse.side_effect = exception
     mock_session.return_value.client.return_value = mock_client
 
     with pytest.raises(type(exception)):
@@ -91,8 +108,8 @@ def test_aws_bedrock_api_exceptions(mock_session, exception):
 @patch("hcl_processor.bedrock_client.boto3.Session")
 def test_aws_bedrock_attribute_error(mock_session):
     mock_client = MagicMock()
-    mock_response = {"body": None}  # .read() will raise AttributeError
-    mock_client.invoke_model.return_value = mock_response
+    mock_response = {"output": None}  # will raise AttributeError when accessing message
+    mock_client.converse.return_value = mock_response
     mock_session.return_value.client.return_value = mock_client
 
     with pytest.raises(AttributeError):
@@ -102,11 +119,15 @@ def test_aws_bedrock_attribute_error(mock_session):
 @patch("hcl_processor.bedrock_client.boto3.Session")
 def test_aws_bedrock_json_decode_error(mock_session):
     mock_client = MagicMock()
-    mock_streaming_body = MagicMock()
-    mock_streaming_body.read.return_value = b"{bad json}"
-
-    mock_response = {"body": mock_streaming_body}
-    mock_client.invoke_model.return_value = mock_response
+    mock_response = {
+        "output": {
+            "message": {
+                "role": "assistant",
+                "content": [{"invalid": "format"}]
+            }
+        }
+    }
+    mock_client.converse.return_value = mock_response
     mock_session.return_value.client.return_value = mock_client
 
     with pytest.raises(json.JSONDecodeError):
@@ -116,12 +137,15 @@ def test_aws_bedrock_json_decode_error(mock_session):
 @patch("hcl_processor.bedrock_client.boto3.Session")
 def test_aws_bedrock_modules_disabled(mock_session):
     mock_client = MagicMock()
-    mock_streaming_body = MagicMock()
-    mock_streaming_body.read.return_value = json.dumps(
-        {"content": [{"text": "response text"}]}
-    ).encode("utf-8")
-    mock_response = {"body": mock_streaming_body}
-    mock_client.invoke_model.return_value = mock_response
+    mock_response = {
+        "output": {
+            "message": {
+                "role": "assistant",
+                "content": [{"text": "response text"}]
+            }
+        }
+    }
+    mock_client.converse.return_value = mock_response
     mock_session.return_value.client.return_value = mock_client
 
     config = build_config()
@@ -134,12 +158,15 @@ def test_aws_bedrock_modules_disabled(mock_session):
 @patch("hcl_processor.bedrock_client.boto3.Session")
 def test_aws_bedrock_modules_data_none(mock_session):
     mock_client = MagicMock()
-    mock_streaming_body = MagicMock()
-    mock_streaming_body.read.return_value = json.dumps(
-        {"content": [{"text": "response text"}]}
-    ).encode("utf-8")
-    mock_response = {"body": mock_streaming_body}
-    mock_client.invoke_model.return_value = mock_response
+    mock_response = {
+        "output": {
+            "message": {
+                "role": "assistant",
+                "content": [{"text": "response text"}]
+            }
+        }
+    }
+    mock_client.converse.return_value = mock_response
     mock_session.return_value.client.return_value = mock_client
 
     result = aws_bedrock("prompt", None, build_config(), build_system_config())
@@ -149,12 +176,15 @@ def test_aws_bedrock_modules_data_none(mock_session):
 @patch("hcl_processor.bedrock_client.boto3.Session")
 def test_aws_bedrock_defaults_used(mock_session):
     mock_client = MagicMock()
-    mock_streaming_body = MagicMock()
-    mock_streaming_body.read.return_value = json.dumps(
-        {"content": [{"text": "response text"}]}
-    ).encode("utf-8")
-    mock_response = {"body": mock_streaming_body}
-    mock_client.invoke_model.return_value = mock_response
+    mock_response = {
+        "output": {
+            "message": {
+                "role": "assistant",
+                "content": [{"text": "response text"}]
+            }
+        }
+    }
+    mock_client.converse.return_value = mock_response
     mock_session.return_value.client.return_value = mock_client
 
     config = build_config()

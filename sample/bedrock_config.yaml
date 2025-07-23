@@ -1,29 +1,34 @@
 bedrock:
-  aws_region: "ap-northeast-1"  # Specify the AWS region where the Bedrock API is available.
   # Note: The accuracy of the generated markdown can be improved by providing details of the content to be generated in system_prompt.
   system_prompt: |
-    The following Terraform code defines several calls to the Datadog Monitor module.
+    You are a Terraform code analyzer specializing in Datadog monitor configurations.
 
-    Datadog Alert Design List (Title) Example
+    Your task is to analyze the provided Terraform code and locals files to generate a JSON document that describes ALL monitor configurations defined in the locals.
 
-    ・ Please output an **Alert Design Document (json table format)** for each alert in the following format as described above.
-    ・ The terraform code should be placed with reference to locals.tf.
-    ・ The Alert Message column should be extracted from the terraform code and put the values as they are while expanding local. (e.g., message value) )
-        sample)
-          ```
-          message = <<-EOT
+    Important rules for analysis:
+    1. Parse the locals.tf files for each environment (dev, stg, prd) to understand the configuration values
+    2. Identify ALL monitors in the locals configuration (e.g., error, latency, etc.)
+    3. For EACH monitor found in locals:
+       - Extract the monitor name without any environment prefix
+       - Use the exact query from the configuration
+       - Extract the message content as is
+       - For thresholds, combine critical and warning values in the format "critical: X, warning: Y"
+       - Include notification channels and tags from locals if available
+       - Set evaluation period based on the timeframe in the query (e.g., "last_5m" = "5分")
+       - Create a separate JSON object for each monitor
 
-          EOT
-          ```
-          Create the value while expanding local.tf for the contents of
-    ・ Put the local variable as it is for the destination of the notification.
-    ・ Put the local variable as it is for the destination of the Query.
-    ・ Put the local variable as it is for the destination of the tag.
-    ・ Put the local variable as it is for the destination of the alert message.
-    ・ For threshold values, if the local variable is a numerical value, insert the value as is. If the local variable is a calculation formula, insert the calculation result and also include the formula itself in the format (calculation formula). Calculation formulas should be defined as local variables.
-    ・ Monitor name prefix: [${local.env}] must never be included in the title.
-    ・ Output should be in Japanese.
-    ・ Create columns for local dev, stg, and prd environments, respectively.
+    Output format:
+    - Generate a JSON array where each object represents a monitor
+    - Each object must follow the schema provided in output_json
+    - All values must be in Japanese where appropriate
+    - Use "<UNKNOWN>" for any values that cannot be determined from the configuration
+
+    Remember:
+    - Process ALL monitors defined in locals.appsync_monitors (error, latency, etc.)
+    - Each monitor should be a separate object in the output JSON array
+    - Analyze the relationship between locals and monitor definitions
+    - Extract and combine values from both the monitor definition and corresponding locals
+    - Ensure all required fields are present in each monitor object
   # Note: Using JSON Schema to describe output_json will increase the accuracy of the prompt.
   output_json: |
     {
@@ -34,21 +39,21 @@ bedrock:
       "items": {
         "type": "object",
         "properties": {
-          "モニター名": {"type": "string", "description": "モニターの名前"},
-          "タイプ": {"type": "string", "description": "モニターのタイプ (例: query alert)"},
-          "クエリ": {"type": "string", "description": "Datadogモニターのクエリ"},
-          "評価期間": {"type": "string", "description": "評価期間 (例: 5分)"},
-          "通知先": {"type": "string", "description": "通知先 (例: Slackチャンネル)"},
-          "タグ": {"type": "string", "description": "モニターに関連付けられたタグ"},
-          "アラートメッセージ": {"type": "string", "description": "アラート発生時のメッセージ"},
-          "備考": {"type": "string", "description": "モニターに関する備考"},
-          "dev 閾値条件": {"type": "string", "description": "開発環境の閾値条件"},
-          "stg 閾値条件": {"type": "string", "description": "ステージング環境の閾値条件"},
-          "prd 閾値条件": {"type": "string", "description": "本番環境の閾値条件"}
+      "monitor_name": {"type": "string", "description": "モニターの名前"},
+      "type": {"type": "string", "description": "モニターのタイプ (例: query alert)"},
+      "query": {"type": "string", "description": "Datadogモニターのクエリ"},
+      "evaluation_period": {"type": "string", "description": "評価期間 (例: 5分)"},
+      "notification": {"type": "string", "description": "通知先 (例: Slackチャンネル)"},
+      "tags": {"type": "string", "description": "モニターに関連付けられたタグ"},
+      "alert_message": {"type": "string", "description": "アラート発生時のメッセージ"},
+      "note": {"type": "string", "description": "モニターに関する備考"},
+      "dev_threshold": {"type": "string", "description": "開発環境の閾値条件"},
+      "stg_threshold": {"type": "string", "description": "ステージング環境の閾値条件"},
+      "prd_threshold": {"type": "string", "description": "本番環境の閾値条件"}
         },
         "required": [
-          "モニター名", "タイプ", "クエリ", "評価期間", "通知先", "タグ",
-          "アラートメッセージ", "備考", "dev 閾値条件", "stg 閾値条件", "prd 閾値条件"
+      "monitor_name", "type", "query", "evaluation_period", "notification", "tags",
+      "alert_message", "note", "dev_threshold", "stg_threshold", "prd_threshold"
         ]
       }
     }
@@ -69,17 +74,17 @@ bedrock:
 
 # Note: The format should be the same as the output_json format of the markdown you wish to generate(output_json)
 schema_columns:
-  - モニター名
-  - タイプ
-  - クエリ
-  - 評価期間
-  - 通知先
-  - タグ
-  - アラートメッセージ
-  - 備考
-  - dev 閾値条件
-  - stg 閾値条件
-  - prd 閾値条件
+  - monitor_name
+  - type
+  - query
+  - evaluation_period
+  - notification
+  - tags
+  - alert_message
+  - note
+  - dev_threshold
+  - stg_threshold
+  - prd_threshold
 
 output:
   # Note: You can specify the name of the intermediate file to generate the markdown.
