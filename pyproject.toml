@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "hcl-processor"
-version = "0.11.0-b"
+version = "0.11.1-b"
 description = "A tool for analyzing HCL files."
 authors = ["S-mishina <45090872+S-mishina@users.noreply.github.com>"]
 packages = [{ include = "hcl_processor", from = "src" }]
@@ -32,6 +32,11 @@ wcwidth = "0.2.13"
 
 [tool.poetry.scripts]
 hcl-processor = "hcl_processor.main:main"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.1"
+pytest-cov = "^6.2.1"
+ruff = "^0.12.5"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
