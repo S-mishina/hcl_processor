@@ -18,7 +18,7 @@ def parse_args():
     )
     parser.add_argument(
         "--debug",
-        type=str,
-        help="Enable debug logging (default(INFO) Parameter is False)"
+        action="store_true",
+        help="Enable debug logging (default: INFO level)"
     )
     return parser.parse_args()

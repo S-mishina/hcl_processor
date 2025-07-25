@@ -7,8 +7,9 @@ import jsonschema
 from jinja2 import Environment, BaseLoader, FileSystemLoader, TemplateNotFound, TemplateSyntaxError
 
 from .utils import ensure_directory_exists
+from .logger_config import get_logger, log_exception
 
-logger = logging.getLogger(__name__)
+logger = get_logger("output_writer")
 
 
 def output_md(md_title, config):
@@ -77,8 +78,7 @@ def output_md(md_title, config):
         if not logger.isEnabledFor(logging.DEBUG):
             os.remove(config["output"]["json_path"])
     except Exception as e:
-        logger.debug(f"{e}")
-        logger.error(f"Error writing Markdown output: {type(e).__name__}")
+        log_exception(logger, e, "Error writing Markdown output")
         raise
 
 
@@ -132,10 +132,8 @@ def validate_output_json(output_str, schema):
         jsonschema.validate(instance=parsed, schema=schema)
         return parsed
     except json.JSONDecodeError as e:
-        logger.debug(f"{e}")
-        logger.error(f"Invalid JSON format: {type(e).__name__}")
+        log_exception(logger, e, "Invalid JSON format")
         raise
     except jsonschema.ValidationError as e:
-        logger.debug(f"{e}")
-        logger.error(f"Output JSON does not match schema: {type(e).__name__}")
+        log_exception(logger, e, "Output JSON does not match schema")
         raise

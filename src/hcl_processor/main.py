@@ -8,6 +8,7 @@ from botocore.exceptions import (ClientError, EndpointConnectionError,
 from .cli import parse_args
 from .config_loader import load_config, load_system_config
 from .file_processor import run_hcl_file_workflow
+from .logger_config import setup_logger, log_exception, log_operation_start, log_operation_success
 
 
 def main():
@@ -19,25 +20,21 @@ def main():
     EXIT_SYSTEM_CONFIG_ERROR = 1
     args = parse_args()
     config_path = args.config_file
-    logging.basicConfig(
-        level=logging.DEBUG if args.debug else logging.INFO,
-        format="%(asctime)s %(levelname)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-    logger = logging.getLogger(__name__)
+    
+    # Setup unified logging
+    log_level = logging.DEBUG if args.debug else logging.INFO
+    logger = setup_logger("hcl_processor.main", level=log_level)
     try:
         system_config = load_system_config()
         logger.debug(f"Loaded system_config:\n {system_config}")
     except Exception as e:
-        logger.debug(f"{e}")
-        logger.exception(f"Failed to load system_config: {type(e).__name__}")
+        log_exception(logger, e, "Failed to load system_config")
         return EXIT_SYSTEM_CONFIG_ERROR
 
     try:
         config = load_config(config_path)
     except ValueError as e:
-        logger.debug(f"{e}")
-        logger.exception(f"Failed to load config: {type(e).__name__}")
+        log_exception(logger, e, f"Failed to load config from {config_path}")
         return system_config["system_call"]["exit_config_error"]
 
     resource = config["input"]["resource_data"]
@@ -49,10 +46,7 @@ def main():
                 try:
                     run_hcl_file_workflow(file_path, config, system_config)
                 except Exception as e:
-                    logger.debug(f"{e}")
-                    logger.exception(
-                        f"Failed processing file {file_path}: {type(e).__name__}"
-                    )
+                    log_exception(logger, e, f"Failed processing file {file_path}")
                     continue
         elif resource.get("folder"):
             logger.info("Processing folder...")
@@ -65,10 +59,7 @@ def main():
                                 os.path.join(root, file_name), config, system_config
                             )
                         except Exception as e:
-                            logger.debug(f"{e}")
-                            logger.exception(
-                                f"Failed processing file {file_name}: {type(e).__name__}"
-                            )
+                            log_exception(logger, e, f"Failed processing file {file_name}")
                             continue
         if system_config["system_call"]["exit_success"] == 0:
             logger.info("All files processed successfully.")
@@ -77,13 +68,11 @@ def main():
         return system_config["system_call"]["exit_success"]
 
     except (EndpointConnectionError, ReadTimeoutError, ClientError) as e:
-        logger.debug(f"{e}")
-        logger.exception(f"Bedrock API error: {type(e).__name__}")
+        log_exception(logger, e, "Bedrock API error")
         return system_config["system_call"]["exit_bedrock_error"]
 
     except Exception as e:
-        logger.debug(f"{e}")
-        logger.exception(f"Unhandled exception: {type(e).__name__}")
+        log_exception(logger, e, "Unhandled exception")
         return system_config["system_call"]["exit_unknown_error"]
 
 

@@ -1,15 +1,16 @@
 import json
 import logging
-
 import os
+
 import boto3
 from botocore.config import Config
 from botocore.exceptions import (ClientError, EndpointConnectionError,
                                  ReadTimeoutError)
 
 from .utils import reset_markdown_file
+from .logger_config import get_logger, log_exception
 
-logger = logging.getLogger(__name__)
+logger = get_logger("bedrock_client")
 
 
 def aws_bedrock(prompt, modules_data, config, system_config):
@@ -171,22 +172,17 @@ def aws_bedrock(prompt, modules_data, config, system_config):
             
             raise json.JSONDecodeError("Invalid response format: missing text or toolUse", "", 0)
         except (AttributeError, TypeError, json.JSONDecodeError) as e:
-            logger.debug(f"{e}")
-            logger.error(f"Failed to parse Bedrock response: {type(e).__name__}")
+            log_exception(logger, e, "Failed to parse Bedrock response")
             raise
     except EndpointConnectionError as e:
-        logger.debug(f"{e}")
-        logger.error(f"Bedrock endpoint connection failed: {type(e).__name__}")
+        log_exception(logger, e, "Bedrock endpoint connection failed")
         raise
     except ReadTimeoutError as e:
-        logger.debug(f"{e}")
-        logger.error(f"Bedrock read timeout: {type(e).__name__}")
+        log_exception(logger, e, "Bedrock read timeout")
         raise
     except ClientError as e:
-        logger.debug(f"{e}")
-        logger.error(f"Bedrock client error: {type(e).__name__}")
+        log_exception(logger, e, "Bedrock client error")
         raise
     except Exception as e:
-        logger.debug(f"{e}")
-        logger.error(f"Unexpected error during Bedrock invocation: {type(e).__name__}")
+        log_exception(logger, e, "Unexpected error during Bedrock invocation")
         raise
