@@ -2,7 +2,6 @@ import logging
 import unittest
 from unittest.mock import patch
 from io import StringIO
-import sys
 
 from src.hcl_processor.logger_config import (
     get_logger, 

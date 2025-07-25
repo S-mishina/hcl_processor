@@ -8,7 +8,7 @@ from botocore.exceptions import (ClientError, EndpointConnectionError,
 from .cli import parse_args
 from .config_loader import load_config, load_system_config
 from .file_processor import run_hcl_file_workflow
-from .logger_config import setup_logger, log_exception, log_operation_start, log_operation_success
+from .logger_config import setup_logger, log_exception
 
 
 def main():

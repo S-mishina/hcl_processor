@@ -1,15 +1,12 @@
 import logging
 import os
-import sys
 import unittest
-from unittest.mock import Mock, patch, MagicMock, call
-from io import StringIO
+from unittest.mock import Mock, patch, call
 import tempfile
 
 from botocore.exceptions import ClientError, EndpointConnectionError, ReadTimeoutError
 
 from src.hcl_processor.main import main
-from src.hcl_processor.cli import parse_args
 
 
 class TestMain(unittest.TestCase):

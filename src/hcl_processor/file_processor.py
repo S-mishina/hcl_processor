@@ -7,7 +7,7 @@ import hcl2
 from .bedrock_client import aws_bedrock
 from .output_writer import output_md, validate_output_json
 from .utils import ensure_directory_exists
-from .logger_config import get_logger, log_exception, log_operation_start, log_operation_success
+from .logger_config import get_logger, log_exception
 
 logger = get_logger("file_processor")
 
