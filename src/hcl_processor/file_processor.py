@@ -6,6 +6,7 @@ import hcl2
 
 from .bedrock_client import aws_bedrock
 from .output_writer import output_md, validate_output_json
+from .utils import ensure_directory_exists
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ def run_hcl_file_workflow(file_path, config, system_config):
             output_str, config["bedrock"]["output_json"]
         )
         logger.debug(f"Validated output:\n {validated_output}")
-        os.makedirs(os.path.dirname(config["output"]["json_path"]), exist_ok=True)
+        ensure_directory_exists(config["output"]["json_path"])
         try:
             # TODO: Need to consider creating a temporary file.
             with open(config["output"]["json_path"], "w", encoding="utf-8") as f:

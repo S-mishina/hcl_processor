@@ -6,6 +6,8 @@ import re
 import jsonschema
 from jinja2 import Environment, BaseLoader, FileSystemLoader, TemplateNotFound, TemplateSyntaxError
 
+from .utils import ensure_directory_exists
+
 logger = logging.getLogger(__name__)
 
 
@@ -60,7 +62,7 @@ def output_md(md_title, config):
         template = env.from_string(template_str)
 
     # Render template
-    os.makedirs(os.path.dirname(config["output"]["markdown_path"]), exist_ok=True)
+    ensure_directory_exists(config["output"]["markdown_path"])
     try:
         rendered = template.render(
             title=md_title,

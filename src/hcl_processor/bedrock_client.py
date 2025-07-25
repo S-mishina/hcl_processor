@@ -7,6 +7,8 @@ from botocore.config import Config
 from botocore.exceptions import (ClientError, EndpointConnectionError,
                                  ReadTimeoutError)
 
+from .utils import reset_markdown_file
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,6 +25,7 @@ def aws_bedrock(prompt, modules_data, config, system_config):
     Raises:
         Exception: If the Bedrock API call fails or the response cannot be parsed.
     """
+
     timeout_config = {
         "read_timeout": config["bedrock"].get(
             "read_timeout",
@@ -133,6 +136,8 @@ def aws_bedrock(prompt, modules_data, config, system_config):
     }
 
     try:
+        # Reset markdown file before Bedrock call (allows reading existing content in prompt if needed)
+        reset_markdown_file(config["output"]["markdown_path"])
         response = bedrock.converse(
             modelId=config["bedrock"].get(
                 "model_id", "anthropic.claude-3-5-sonnet-20240620-v1:0"
