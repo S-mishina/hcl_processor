@@ -24,6 +24,9 @@ def build_config():
             "model_id": "test-model",
         },
         "modules": {"enabled": True},
+        "output": {
+            "markdown_path": "/tmp/test_output.md"
+        },
     }
 
 
