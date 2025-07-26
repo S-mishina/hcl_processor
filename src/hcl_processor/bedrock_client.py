@@ -6,13 +6,13 @@ from botocore.config import Config
 from botocore.exceptions import (ClientError, EndpointConnectionError,
                                  ReadTimeoutError)
 
-from .utils import reset_markdown_file
+from .utils import reset_markdown_file, measure_time
 from .logger_config import get_logger, log_exception
 
 logger = get_logger("bedrock_client")
 
 
-def aws_bedrock(prompt, modules_data, config, system_config):
+def aws_bedrock(prompt: str, modules_data: str | None, config: dict, system_config: dict) -> str:
     """
     Call the AWS Bedrock API with the given prompt and configuration.
     Args:
@@ -138,15 +138,16 @@ def aws_bedrock(prompt, modules_data, config, system_config):
     try:
         # Reset markdown file before Bedrock call (allows reading existing content in prompt if needed)
         reset_markdown_file(config["output"]["markdown_path"])
-        response = bedrock.converse(
-            modelId=config["bedrock"].get(
-                "model_id", "anthropic.claude-3-5-sonnet-20240620-v1:0"
-            ),
-            messages=messages,
-            system=system,
-            inferenceConfig=inference_config,
-            toolConfig=tool_config
-        )
+        
+        model_id = config["bedrock"].get("model_id", system_config["constants"]["bedrock"]["default_model_id"])
+        with measure_time(f"AWS Bedrock API call: {model_id}", logger):
+            response = bedrock.converse(
+                modelId=model_id,
+                messages=messages,
+                system=system,
+                inferenceConfig=inference_config,
+                toolConfig=tool_config
+            )
         logger.debug(f"Bedrock response:\n {response}")
         try:
             logger.debug(f"Full response structure: {json.dumps(response, indent=2)}")
@@ -160,8 +161,8 @@ def aws_bedrock(prompt, modules_data, config, system_config):
             if "toolUse" in content:
                 tool_use = content["toolUse"]
                 logger.debug(f"Tool use response: {json.dumps(tool_use, indent=2, ensure_ascii=False)}")
-                if tool_use["name"] == "json_validator":
-                    result = json.dumps(tool_use["input"].get("monitors", []), ensure_ascii=False)
+                if tool_use["name"] == system_config["constants"]["bedrock"]["tool_name"]:
+                    result = json.dumps(tool_use["input"].get(system_config["constants"]["bedrock"]["target_json_key"], []), ensure_ascii=False)
                     logger.debug(f"JSON validation result: {result}")
                     return result
             

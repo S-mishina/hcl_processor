@@ -1,16 +1,17 @@
 import json
-import logging
 from copy import deepcopy
 
 import jsonschema
 import yaml
 
 from .config.system_config import get_system_config
+from .utils import measure_time
+from .logger_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger("config_loader")
 
 
-def get_default_config():
+def get_default_config() -> dict:
     """
     Returns the default configuration for the HCL processor.
     """
@@ -35,7 +36,7 @@ def get_default_config():
     }
 
 
-def merge_defaults(config, defaults):
+def merge_defaults(config: dict, defaults: dict) -> dict:
     """
     Recursively merge default values into config.
     Args:
@@ -53,7 +54,7 @@ def merge_defaults(config, defaults):
     return result
 
 
-def load_system_config(system_config=get_system_config()):
+def load_system_config(system_config: dict = get_system_config()) -> dict:
     """
     Load the system configuration from a config/system_config.py file.
     Args:
@@ -63,31 +64,33 @@ def load_system_config(system_config=get_system_config()):
     Raises:
         ValueError: If the system configuration file is not found or cannot be loaded.
     """
+    with measure_time("System configuration loading", logger):
+        if system_config is None:
+            logger.warning(
+                "system_config.yaml is empty or could not be loaded, returning None"
+            )
+            raise ValueError("System config is None")
 
-    if system_config is None:
-        logger.warning(
-            "system_config.yaml is empty or could not be loaded, returning None"
-        )
-        raise ValueError("System config is None")
+        if not isinstance(system_config, dict):
+            logger.error(
+                "system_config.yaml does not contain a valid dictionary, returning None"
+            )
+            raise ValueError("System config is not a dictionary")
 
-    if not isinstance(system_config, dict):
-        logger.error(
-            "system_config.yaml does not contain a valid dictionary, returning None"
-        )
-        raise ValueError("System config is not a dictionary")
+        if "system_prompt" not in system_config or not isinstance(
+            system_config["system_prompt"], str
+        ):
+            logger.warning(
+                "system_prompt key missing or not a string in system_config, returning None"
+            )
+            raise ValueError("System prompt is missing or not a string")
 
-    if "system_prompt" not in system_config or not isinstance(
-        system_config["system_prompt"], str
-    ):
-        logger.warning(
-            "system_prompt key missing or not a string in system_config, returning None"
-        )
-        raise ValueError("System prompt is missing or not a string")
-
-    return system_config
+        logger.debug("System configuration validation passed")
+        logger.debug(f"System config contains {len(system_config)} top-level keys")
+        return system_config
 
 
-def load_config(config_path):
+def load_config(config_path: str) -> dict:
     """
     Load the configuration from a YAML file.
     Args:
@@ -97,15 +100,16 @@ def load_config(config_path):
     Raises:
         ValueError: If the configuration file is not found or cannot be loaded.
     """
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
-    logger.debug(f"Loaded config:\n {config}")
+    with measure_time(f"Configuration loading: {config_path}", logger):
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+        logger.debug(f"Loaded config:\n {config}")
 
-    # Load default configuration
-    default_config = get_default_config()
+        # Load default configuration
+        default_config = get_default_config()
 
-    # Define schema
-    schema = {
+        # Define schema
+        schema = {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
@@ -230,25 +234,27 @@ def load_config(config_path):
             },
         },
         "required": ["bedrock", "input", "output"],
-    }
+        }
 
-    if "bedrock" in config and "output_json" in config["bedrock"]:
-        if isinstance(config["bedrock"]["output_json"], str):
-            try:
-                config["bedrock"]["output_json"] = json.loads(
-                    config["bedrock"]["output_json"]
-                )
-            except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON in output_json: {e}")
+        if "bedrock" in config and "output_json" in config["bedrock"]:
+            if isinstance(config["bedrock"]["output_json"], str):
+                try:
+                    config["bedrock"]["output_json"] = json.loads(
+                        config["bedrock"]["output_json"]
+                    )
+                except json.JSONDecodeError as e:
+                    raise ValueError(f"Invalid JSON in output_json: {e}")
 
-    try:
-        # First validate the base configuration
-        jsonschema.validate(instance=config, schema=schema)
-        
-        # Then merge with defaults
-        config = merge_defaults(config, default_config)
-        
-        logger.debug(f"Config after merging defaults:\n {config}")
-        return config
-    except jsonschema.ValidationError as e:
-        raise ValueError(f"Invalid configuration: {e.message}")
+        try:
+            # First validate the base configuration
+            jsonschema.validate(instance=config, schema=schema)
+            logger.debug("Configuration schema validation passed")
+            
+            # Then merge with defaults
+            config = merge_defaults(config, default_config)
+            logger.debug("Configuration merged with defaults")
+            
+            logger.debug(f"Config after merging defaults:\n {config}")
+            return config
+        except jsonschema.ValidationError as e:
+            raise ValueError(f"Invalid configuration: {e.message}")
