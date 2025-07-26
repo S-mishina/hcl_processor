@@ -25,7 +25,7 @@ def main() -> int:
     log_level = logging.DEBUG if args.debug else logging.INFO
     
     # Setup root hcl_processor logger first for all child loggers
-    root_logger = setup_logger("hcl_processor", level=log_level)
+    setup_logger("hcl_processor", level=log_level)
     
     # Setup main logger
     logger = setup_logger("hcl_processor.main", level=log_level)
