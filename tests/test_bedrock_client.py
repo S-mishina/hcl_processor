@@ -47,6 +47,13 @@ def build_system_config():
                 "top_k": 40,
             },
         },
+        "constants": {
+            "bedrock": {
+                "default_model_id": "anthropic.claude-3-5-sonnet-20240620-v1:0",
+                "tool_name": "json_validator",
+                "target_json_key": "monitors"
+            }
+        },
     }
 
 

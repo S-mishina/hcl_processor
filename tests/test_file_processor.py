@@ -46,7 +46,7 @@ def test_read_local_files_parse_error(mock_hcl2, tmp_path):
 
 def test_get_modules_name_success():
     resource_dict = {"module": [{"module_name": {"monitors": "data"}}]}
-    result = get_modules_name(resource_dict)
+    result = get_modules_name(resource_dict, "monitors")
     assert result == "module_name"
 
 
@@ -79,7 +79,13 @@ def test_run_hcl_file_workflow_success(
         "output": {"json_path": str(tmp_path / "out.json")},
         "bedrock": {"output_json": {}},
     }
-    system_config = {}
+    system_config = {
+        "constants": {
+            "file_processing": {
+                "terraform_extension": ".tf"
+            }
+        }
+    }
     with patch(
         "hcl_processor.file_processor.validate_output_json",
         return_value={"validated": True},
@@ -162,7 +168,14 @@ def test_run_hcl_file_workflow_failback(
         "output": {"json_path": str(tmp_path / "out.json")},
         "bedrock": {"output_json": {}},
     }
-    system_config = {}
+    system_config = {
+        "constants": {
+            "file_processing": {
+                "terraform_extension": ".tf",
+                "default_search_resource": "target"
+            }
+        }
+    }
     with patch("hcl_processor.file_processor.output_md") as mock_output_md:
         run_hcl_file_workflow(str(file_path), config, system_config)
         mock_output_md.assert_called()
