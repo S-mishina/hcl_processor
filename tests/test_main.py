@@ -46,6 +46,11 @@ class TestMain(unittest.TestCase):
                 "exit_validation_error": 4,
                 "exit_bedrock_error": 5,
                 "exit_unknown_error": 99
+            },
+            "constants": {
+                "file_processing": {
+                    "terraform_extension": ".tf"
+                }
             }
         }
 
@@ -78,7 +83,10 @@ class TestMain(unittest.TestCase):
         
         # Verify
         self.assertEqual(result, 0)
-        mock_setup_logger.assert_called_once_with("hcl_processor.main", level=logging.INFO)
+        
+        self.assertEqual(mock_setup_logger.call_count, 2)
+        mock_setup_logger.assert_any_call("hcl_processor", level=logging.INFO)
+        mock_setup_logger.assert_any_call("hcl_processor.main", level=logging.INFO)
         mock_workflow.assert_called_once_with("test.tf", self.sample_config, self.sample_system_config)
         mock_logger.info.assert_any_call("Processing files...")
         mock_logger.info.assert_any_call("1 files found to process.")
@@ -117,7 +125,10 @@ class TestMain(unittest.TestCase):
         
         # Verify
         self.assertEqual(result, 0)
-        mock_setup_logger.assert_called_once_with("hcl_processor.main", level=logging.DEBUG)
+        
+        self.assertEqual(mock_setup_logger.call_count, 2)
+        mock_setup_logger.assert_any_call("hcl_processor", level=logging.DEBUG)
+        mock_setup_logger.assert_any_call("hcl_processor.main", level=logging.DEBUG)
         mock_logger.info.assert_any_call("Processing folder...")
         mock_logger.info.assert_any_call("Processing all .tf files in folder: /test/folder")
         

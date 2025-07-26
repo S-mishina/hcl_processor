@@ -1,4 +1,4 @@
-def get_system_config():
+def get_system_config() -> dict:
     """
     Returns the system configuration for the HCL processor.
     """
@@ -40,6 +40,18 @@ def get_system_config():
                 "top_p": 1,
                 "top_k": 0,
             },
+        },
+        "constants": {
+            "bedrock": {
+                "default_model_id": "anthropic.claude-3-5-sonnet-20240620-v1:0",
+                "tool_name": "json_validator",
+                "tool_description": "Validates and formats JSON output",
+                "target_json_key": "monitors"
+            },
+            "file_processing": {
+                "terraform_extension": ".tf",
+                "default_search_resource": "monitors"
+            }
         },
     }
     return system_config

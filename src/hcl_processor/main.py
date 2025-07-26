@@ -11,7 +11,7 @@ from .file_processor import run_hcl_file_workflow
 from .logger_config import setup_logger, log_exception
 
 
-def main():
+def main() -> int:
     """
     Main function to load configurations, process files, and handle errors.
     Returns:
@@ -23,6 +23,11 @@ def main():
     
     # Setup unified logging
     log_level = logging.DEBUG if args.debug else logging.INFO
+    
+    # Setup root hcl_processor logger first for all child loggers
+    setup_logger("hcl_processor", level=log_level)
+    
+    # Setup main logger
     logger = setup_logger("hcl_processor.main", level=log_level)
     try:
         system_config = load_system_config()
@@ -53,7 +58,8 @@ def main():
             logger.info(f"Processing all .tf files in folder: {resource['folder']}")
             for root, _, files in os.walk(resource["folder"]):
                 for file_name in files:
-                    if file_name.endswith(".tf"):
+                    tf_extension = system_config["constants"]["file_processing"]["terraform_extension"]
+                    if file_name.endswith(tf_extension):
                         try:
                             run_hcl_file_workflow(
                                 os.path.join(root, file_name), config, system_config
