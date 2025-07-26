@@ -83,7 +83,7 @@ class TestMain(unittest.TestCase):
         
         # Verify
         self.assertEqual(result, 0)
-        # リファクタリングによりloggerが2回呼ばれるようになったため、呼び出し回数をチェック
+        
         self.assertEqual(mock_setup_logger.call_count, 2)
         mock_setup_logger.assert_any_call("hcl_processor", level=logging.INFO)
         mock_setup_logger.assert_any_call("hcl_processor.main", level=logging.INFO)
@@ -125,7 +125,7 @@ class TestMain(unittest.TestCase):
         
         # Verify
         self.assertEqual(result, 0)
-        # リファクタリングによりloggerが2回呼ばれるようになったため、呼び出し回数をチェック
+        
         self.assertEqual(mock_setup_logger.call_count, 2)
         mock_setup_logger.assert_any_call("hcl_processor", level=logging.DEBUG)
         mock_setup_logger.assert_any_call("hcl_processor.main", level=logging.DEBUG)
