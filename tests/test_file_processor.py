@@ -179,3 +179,229 @@ def test_run_hcl_file_workflow_failback(
     with patch("hcl_processor.file_processor.output_md") as mock_output_md:
         run_hcl_file_workflow(str(file_path), config, system_config)
         mock_output_md.assert_called()
+
+
+@patch("hcl_processor.file_processor.aws_bedrock")
+@patch("hcl_processor.file_processor.hcl2.loads")
+@patch("hcl_processor.file_processor.validate_output_json")
+@patch("hcl_processor.file_processor.get_modules_name")
+@patch("hcl_processor.file_processor.output_md")
+def test_failback_resource_type_branch(mock_output_md, mock_get_module, mock_validate, mock_hcl2, mock_bedrock, tmp_path):
+    """Test resource type branch in failback processing (lines 68-70)"""
+    file_path = tmp_path / "test.tf"
+    file_path.write_text("content")
+    
+    config = {
+        "input": {
+            "local_files": [],
+            "modules": {"enabled": True, "path": str(file_path)},
+            "failback": {
+                "enabled": True,
+                "type": "resource",  # Test resource type branch
+                "options": {"target": "monitors"},
+            },
+        },
+        "output": {"json_path": str(tmp_path / "out.json")},
+        "bedrock": {"output_json": {}},
+    }
+    system_config = {
+        "constants": {
+            "file_processing": {
+                "terraform_extension": ".tf",
+                "default_search_resource": "monitors"
+            }
+        }
+    }
+    
+    # Mock resource structure for resource type failback
+    mock_hcl2.return_value = {
+        "resource": [{"res1": {}}, {"res2": {}}],
+        "module": [{"test_module": {"monitors": [{}]}}]
+    }
+    mock_get_module.return_value = "test_module"
+    
+    # First call raises JSONDecodeError, subsequent calls succeed
+    mock_bedrock.side_effect = [
+        json.decoder.JSONDecodeError("test", "", 0),
+        '{"result": "success1"}',
+        '{"result": "success2"}'
+    ]
+    mock_validate.side_effect = [
+        [{"result": "success1"}],
+        [{"result": "success2"}]
+    ]
+    
+    run_hcl_file_workflow(str(file_path), config, system_config)
+    mock_output_md.assert_called()
+
+
+@patch("hcl_processor.file_processor.aws_bedrock")
+@patch("hcl_processor.file_processor.hcl2.loads")
+@patch("hcl_processor.file_processor.validate_output_json")
+@patch("hcl_processor.file_processor.get_modules_name")
+@patch("hcl_processor.file_processor.output_md")
+def test_failback_chunk_error_pass_strategy(mock_output_md, mock_get_module, mock_validate, mock_hcl2, mock_bedrock, tmp_path):
+    """Test individual chunk error handling with pass strategy (lines 84-85)"""
+    file_path = tmp_path / "test.tf"
+    file_path.write_text("content")
+    
+    config = {
+        "input": {
+            "local_files": [],
+            "modules": {"enabled": True, "path": str(file_path)},
+            "failback": {
+                "enabled": True,
+                "type": "module",
+                "options": {"target": "monitors"},
+            },
+        },
+        "output": {"json_path": str(tmp_path / "out.json")},
+        "bedrock": {"output_json": {}},
+    }
+    system_config = {
+        "constants": {
+            "file_processing": {
+                "terraform_extension": ".tf",
+                "default_search_resource": "monitors"
+            }
+        }
+    }
+    
+    mock_hcl2.return_value = {
+        "module": [{"test_module": {"monitors": [{"chunk1": {}}, {"chunk2": {}}, {"chunk3": {}}]}}]
+    }
+    mock_get_module.return_value = "test_module"
+    
+    # First call fails, then mixed chunk results
+    mock_bedrock.side_effect = [
+        json.decoder.JSONDecodeError("test", "", 0),
+        '{"result": "chunk1_success"}',  # Chunk 1 succeeds
+        Exception("Chunk 2 error"),     # Chunk 2 fails (tests pass strategy)
+        '{"result": "chunk3_success"}'   # Chunk 3 succeeds
+    ]
+    mock_validate.side_effect = [
+        [{"result": "chunk1_success"}],
+        [{"result": "chunk3_success"}]
+    ]
+    
+    # Should not raise exception due to pass strategy
+    run_hcl_file_workflow(str(file_path), config, system_config)
+    mock_output_md.assert_called()
+
+
+@patch("hcl_processor.file_processor.aws_bedrock")
+@patch("hcl_processor.file_processor.hcl2.loads")
+@patch("hcl_processor.file_processor.validate_output_json")
+@patch("hcl_processor.file_processor.get_modules_name")
+@patch("hcl_processor.file_processor.output_md")
+def test_failback_extend_error_handling(mock_output_md, mock_get_module, mock_validate, mock_hcl2, mock_bedrock, tmp_path):
+    """Test error in flattened list extend operation (lines 88-91)"""
+    file_path = tmp_path / "test.tf"
+    file_path.write_text("content")
+    
+    config = {
+        "input": {
+            "local_files": [],
+            "modules": {"enabled": True, "path": str(file_path)},
+            "failback": {
+                "enabled": True,
+                "type": "module",
+                "options": {"target": "monitors"},
+            },
+        },
+        "output": {"json_path": str(tmp_path / "out.json")},
+        "bedrock": {"output_json": {}},
+    }
+    system_config = {
+        "constants": {
+            "file_processing": {
+                "terraform_extension": ".tf",
+                "default_search_resource": "monitors"
+            }
+        }
+    }
+    
+    mock_hcl2.return_value = {
+        "module": [{"test_module": {"monitors": [{"chunk1": {}}]}}]
+    }
+    mock_get_module.return_value = "test_module"
+    
+    mock_bedrock.side_effect = [
+        json.decoder.JSONDecodeError("test", "", 0),
+        '{"result": "success"}'
+    ]
+    
+    # Return non-iterable to trigger extend error
+    mock_validate.return_value = "not_a_list"
+    
+    # Should handle extend error gracefully
+    run_hcl_file_workflow(str(file_path), config, system_config)
+    mock_output_md.assert_called()
+
+
+@patch("hcl_processor.file_processor.aws_bedrock")
+@patch("hcl_processor.file_processor.hcl2.loads")
+@patch("hcl_processor.file_processor.logger")
+def test_failback_disabled_debug_mode(mock_logger, mock_hcl2, mock_bedrock, tmp_path):
+    """Test failback disabled with debug mode (lines 101-105)"""
+    file_path = tmp_path / "test.tf"
+    file_path.write_text("content")
+    
+    config = {
+        "input": {
+            "local_files": [],
+            "modules": {"enabled": False},
+            "failback": {"enabled": False},
+        },
+        "output": {"json_path": str(tmp_path / "out.json")},
+        "bedrock": {"output_json": {}},
+    }
+    system_config = {
+        "constants": {
+            "file_processing": {
+                "terraform_extension": ".tf"
+            }
+        }
+    }
+    
+    mock_hcl2.return_value = {"resource": []}
+    mock_bedrock.side_effect = json.decoder.JSONDecodeError("test", "", 0)
+    mock_logger.isEnabledFor.return_value = True  # Debug mode enabled
+    
+    # Should raise exception in debug mode
+    with pytest.raises(json.decoder.JSONDecodeError):
+        run_hcl_file_workflow(str(file_path), config, system_config)
+
+
+@patch("hcl_processor.file_processor.aws_bedrock")
+@patch("hcl_processor.file_processor.hcl2.loads")
+@patch("hcl_processor.file_processor.logger")
+def test_failback_disabled_non_debug_mode(mock_logger, mock_hcl2, mock_bedrock, tmp_path):
+    """Test failback disabled without debug mode (lines 101-105)"""
+    file_path = tmp_path / "test.tf"
+    file_path.write_text("content")
+    
+    config = {
+        "input": {
+            "local_files": [],
+            "modules": {"enabled": False},
+            "failback": {"enabled": False},
+        },
+        "output": {"json_path": str(tmp_path / "out.json")},
+        "bedrock": {"output_json": {}},
+    }
+    system_config = {
+        "constants": {
+            "file_processing": {
+                "terraform_extension": ".tf"
+            }
+        }
+    }
+    
+    mock_hcl2.return_value = {"resource": []}
+    mock_bedrock.side_effect = json.decoder.JSONDecodeError("test", "", 0)
+    mock_logger.isEnabledFor.return_value = False  # Debug mode disabled
+    
+    # Should return without raising exception
+    result = run_hcl_file_workflow(str(file_path), config, system_config)
+    assert result is None
