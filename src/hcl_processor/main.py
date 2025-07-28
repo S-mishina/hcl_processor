@@ -9,6 +9,7 @@ from .cli import parse_args
 from .config_loader import load_config, load_system_config
 from .file_processor import run_hcl_file_workflow
 from .logger_config import setup_logger, log_exception
+from .utils import reset_markdown_file
 
 
 def main() -> int:
@@ -43,6 +44,10 @@ def main() -> int:
         return system_config["system_call"]["exit_config_error"]
 
     resource = config["input"]["resource_data"]
+    
+    # Reset markdown file once at the start of command execution
+    reset_markdown_file(config["output"]["markdown_path"])
+    
     try:
         if resource.get("files"):
             logger.info("Processing files...")

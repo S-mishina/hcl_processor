@@ -6,7 +6,7 @@ from botocore.config import Config
 from botocore.exceptions import (ClientError, EndpointConnectionError,
                                  ReadTimeoutError)
 
-from .utils import reset_markdown_file, measure_time
+from .utils import measure_time
 from .logger_config import get_logger, log_exception
 
 logger = get_logger("bedrock_client")
@@ -136,9 +136,6 @@ def aws_bedrock(prompt: str, modules_data: str | None, config: dict, system_conf
     }
 
     try:
-        # Reset markdown file before Bedrock call (allows reading existing content in prompt if needed)
-        reset_markdown_file(config["output"]["markdown_path"])
-        
         model_id = config["bedrock"].get("model_id", system_config["constants"]["bedrock"]["default_model_id"])
         with measure_time(f"AWS Bedrock API call: {model_id}", logger):
             response = bedrock.converse(
