@@ -30,7 +30,7 @@ class TestMain(unittest.TestCase):
             },
             "output": {
                 "json_path": os.path.join(self.test_dir, "output.json"),
-                "md_path": os.path.join(self.test_dir, "output.md")
+                "markdown_path": os.path.join(self.test_dir, "output.md")
             },
             "bedrock": {
                 "output_json": {"type": "object"}
@@ -64,7 +64,8 @@ class TestMain(unittest.TestCase):
     @patch('src.hcl_processor.main.load_config')
     @patch('src.hcl_processor.main.run_hcl_file_workflow')
     @patch('src.hcl_processor.main.setup_logger')
-    def test_main_success_with_files(self, mock_setup_logger, mock_workflow, mock_load_config, mock_load_system_config, mock_parse_args):
+    @patch('src.hcl_processor.main.reset_markdown_file')
+    def test_main_success_with_files(self, mock_reset_markdown, mock_setup_logger, mock_workflow, mock_load_config, mock_load_system_config, mock_parse_args):
         """Test successful execution with files"""
         # Setup mocks
         mock_logger = Mock()
@@ -84,6 +85,9 @@ class TestMain(unittest.TestCase):
         # Verify
         self.assertEqual(result, 0)
         
+        # Verify reset_markdown_file is called once at the start
+        mock_reset_markdown.assert_called_once_with(self.sample_config["output"]["markdown_path"])
+        
         self.assertEqual(mock_setup_logger.call_count, 2)
         mock_setup_logger.assert_any_call("hcl_processor", level=logging.INFO)
         mock_setup_logger.assert_any_call("hcl_processor.main", level=logging.INFO)
@@ -98,7 +102,8 @@ class TestMain(unittest.TestCase):
     @patch('src.hcl_processor.main.os.walk')
     @patch('src.hcl_processor.main.run_hcl_file_workflow')
     @patch('src.hcl_processor.main.setup_logger')
-    def test_main_success_with_folder(self, mock_setup_logger, mock_workflow, mock_walk, mock_load_config, mock_load_system_config, mock_parse_args):
+    @patch('src.hcl_processor.main.reset_markdown_file')
+    def test_main_success_with_folder(self, mock_reset_markdown, mock_setup_logger, mock_workflow, mock_walk, mock_load_config, mock_load_system_config, mock_parse_args):
         """Test successful execution with folder processing"""
         # Setup mocks
         mock_logger = Mock()
@@ -125,6 +130,9 @@ class TestMain(unittest.TestCase):
         
         # Verify
         self.assertEqual(result, 0)
+        
+        # Verify reset_markdown_file is called once at the start
+        mock_reset_markdown.assert_called_once_with(folder_config["output"]["markdown_path"])
         
         self.assertEqual(mock_setup_logger.call_count, 2)
         mock_setup_logger.assert_any_call("hcl_processor", level=logging.DEBUG)
