@@ -405,3 +405,66 @@ def test_failback_disabled_non_debug_mode(mock_logger, mock_hcl2, mock_bedrock, 
     # Should return without raising exception
     result = run_hcl_file_workflow(str(file_path), config, system_config)
     assert result is None
+
+
+@patch("hcl_processor.file_processor.open", new_callable=mock_open)
+@patch("hcl_processor.file_processor.os.makedirs")
+@patch("hcl_processor.file_processor.aws_bedrock")
+@patch("hcl_processor.file_processor.get_modules_name", return_value="module_name")
+@patch(
+    "hcl_processor.file_processor.hcl2.loads",
+    return_value={
+        "resource": [{"r1": {}}],
+        "module": [{"module_name": {"target": [{}]}}],
+    },
+)
+@patch("hcl_processor.file_processor.read_tf_file", return_value=("content", "dir"))
+@patch("hcl_processor.file_processor.read_local_files", return_value="locals")
+def test_empty_result_triggers_failback(
+    mock_read_local,
+    mock_read_tf,
+    mock_hcl2,
+    mock_get_module,
+    mock_bedrock,
+    mock_makedirs,
+    mock_open_func,
+    tmp_path,
+):
+    """Test that empty result from API triggers failback strategy"""
+    file_path = tmp_path / "test.tf"
+    file_path.write_text("content")
+    
+    config = {
+        "input": {
+            "local_files": [],
+            "modules": {"enabled": True, "path": str(file_path)},
+            "failback": {
+                "enabled": True,
+                "type": "module",
+                "options": {"target": "target"},
+            },
+        },
+        "output": {"json_path": str(tmp_path / "out.json")},
+        "bedrock": {"output_json": {}},
+    }
+    system_config = {
+        "constants": {
+            "file_processing": {
+                "terraform_extension": ".tf",
+                "default_search_resource": "target"
+            }
+        }
+    }
+    
+    # First call returns empty list, subsequent calls in failback succeed
+    mock_bedrock.side_effect = [
+        '[]',  # Main API call returns empty result
+        '{"result": "success1"}',  # Failback chunk 1 succeeds
+    ]
+    
+    with patch(
+        "hcl_processor.file_processor.validate_output_json",
+        side_effect=[[], [{"result": "success1"}]],  # First empty, then success
+    ), patch("hcl_processor.file_processor.output_md") as mock_output_md:
+        run_hcl_file_workflow(str(file_path), config, system_config)
+        mock_output_md.assert_called()
