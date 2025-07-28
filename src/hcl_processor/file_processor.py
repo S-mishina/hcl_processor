@@ -169,11 +169,16 @@ def run_hcl_file_workflow(file_path: str, config: dict, system_config: dict) -> 
             # 2. Main API processing
             validated_output = _process_main_bedrock_api(combined_str, modules_raw, config, system_config)
             
+            # Check if result is empty or insufficient, which indicates need for failback
+            if isinstance(validated_output, list) and len(validated_output) == 0:
+                logger.warning("API returned empty result, triggering failback strategy...")
+                raise json.decoder.JSONDecodeError("Empty result from API", "", 0)
+            
             # 3. Output processing
             _write_output_files(validated_output, file_path, config, system_config)
             logger.info(f"Successfully processed file: {file_path}")
         except json.decoder.JSONDecodeError:
-            logger.error("Prompt too large or malformed JSON, retrying in chunks...")
+            logger.error("Prompt too large, malformed JSON, or empty result - retrying in chunks...")
             
             if config["input"]["failback"]["enabled"]:
                 # 4. Execute failback strategy
