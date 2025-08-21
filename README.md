@@ -29,8 +29,7 @@ It supports automated analysis and documentation of infrastructure configuration
 ## Features and Functions at a Glance
 
 > [!warning]
-> Currently the model is only enabled for anthropic.claude-3-5-sonnet-20240620-v1:0.
-The default region is us-east-1.
+> The default region is us-east-1.
 If you want to change it, please specify `bedrock.aws_region` in confg.yaml.
 
 - ✅ Validate YAML configuration files with JSON Schema
