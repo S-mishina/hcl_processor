@@ -17,7 +17,7 @@ class TestMain(unittest.TestCase):
         # Create temporary directory for test files
         self.test_dir = tempfile.mkdtemp()
         self.config_file = os.path.join(self.test_dir, "test_config.yaml")
-        
+
         # Sample config content
         self.sample_config = {
             "input": {
@@ -36,7 +36,7 @@ class TestMain(unittest.TestCase):
                 "output_json": {"type": "object"}
             }
         }
-        
+
         self.sample_system_config = {
             "system_call": {
                 "exit_success": 0,
@@ -70,24 +70,24 @@ class TestMain(unittest.TestCase):
         # Setup mocks
         mock_logger = Mock()
         mock_setup_logger.return_value = mock_logger
-        
+
         mock_args = Mock()
         mock_args.config_file = self.config_file
         mock_args.debug = False
         mock_parse_args.return_value = mock_args
-        
+
         mock_load_system_config.return_value = self.sample_system_config
         mock_load_config.return_value = self.sample_config
-        
+
         # Execute
         result = main()
-        
+
         # Verify
         self.assertEqual(result, 0)
-        
+
         # Verify reset_markdown_file is called once at the start
         mock_reset_markdown.assert_called_once_with(self.sample_config["output"]["markdown_path"])
-        
+
         self.assertEqual(mock_setup_logger.call_count, 2)
         mock_setup_logger.assert_any_call("hcl_processor", level=logging.INFO)
         mock_setup_logger.assert_any_call("hcl_processor.main", level=logging.INFO)
@@ -108,38 +108,38 @@ class TestMain(unittest.TestCase):
         # Setup mocks
         mock_logger = Mock()
         mock_setup_logger.return_value = mock_logger
-        
+
         mock_args = Mock()
         mock_args.config_file = self.config_file
         mock_args.debug = True  # Test debug mode
         mock_parse_args.return_value = mock_args
-        
+
         mock_load_system_config.return_value = self.sample_system_config
-        
+
         folder_config = self.sample_config.copy()
         folder_config["input"]["resource_data"] = {"folder": "/test/folder"}
         mock_load_config.return_value = folder_config
-        
+
         # Mock os.walk to return test files
         mock_walk.return_value = [
             ("/test/folder", [], ["file1.tf", "file2.tf", "other.txt"])
         ]
-        
+
         # Execute
         result = main()
-        
+
         # Verify
         self.assertEqual(result, 0)
-        
+
         # Verify reset_markdown_file is called once at the start
         mock_reset_markdown.assert_called_once_with(folder_config["output"]["markdown_path"])
-        
+
         self.assertEqual(mock_setup_logger.call_count, 2)
         mock_setup_logger.assert_any_call("hcl_processor", level=logging.DEBUG)
         mock_setup_logger.assert_any_call("hcl_processor.main", level=logging.DEBUG)
         mock_logger.info.assert_any_call("Processing folder...")
         mock_logger.info.assert_any_call("Processing all .tf files in folder: /test/folder")
-        
+
         # Verify workflow called for each .tf file
         expected_calls = [
             call("/test/folder/file1.tf", folder_config, self.sample_system_config),
@@ -149,17 +149,121 @@ class TestMain(unittest.TestCase):
 
     @patch('src.hcl_processor.main.parse_args')
     @patch('src.hcl_processor.main.load_system_config')
+    @patch('src.hcl_processor.main.load_config')
+    @patch('src.hcl_processor.main.os.walk')
+    @patch('src.hcl_processor.main.run_hcl_file_workflow')
+    @patch('src.hcl_processor.main.setup_logger')
+    @patch('src.hcl_processor.main.reset_markdown_file')
+    def test_main_folder_deterministic_processing_order(self, mock_reset_markdown, mock_setup_logger, mock_workflow, mock_walk, mock_load_config, mock_load_system_config, mock_parse_args):
+        """Test that folder processing maintains deterministic file order"""
+        # Setup mocks
+        mock_logger = Mock()
+        mock_setup_logger.return_value = mock_logger
+
+        mock_args = Mock()
+        mock_args.config_file = self.config_file
+        mock_args.debug = False
+        mock_parse_args.return_value = mock_args
+
+        mock_load_system_config.return_value = self.sample_system_config
+
+        folder_config = self.sample_config.copy()
+        folder_config["input"]["resource_data"] = {"folder": "/test/folder"}
+        mock_load_config.return_value = folder_config
+
+        # Mock os.walk to return files in non-alphabetical order to test sorting
+        mock_walk.return_value = [
+            ("/test/folder", [], ["zzz.tf", "aaa.tf", "mmm.tf", "other.txt", "bbb.tf"]),
+            ("/test/folder/subdir", [], ["yyy.tf", "xxx.tf"])
+        ]
+
+        # Execute
+        result = main()
+
+        # Verify successful execution
+        self.assertEqual(result, 0)
+
+        # Verify files are processed in alphabetical order (by full path)
+        expected_calls = [
+            call("/test/folder/aaa.tf", folder_config, self.sample_system_config),
+            call("/test/folder/bbb.tf", folder_config, self.sample_system_config),
+            call("/test/folder/mmm.tf", folder_config, self.sample_system_config),
+            call("/test/folder/subdir/xxx.tf", folder_config, self.sample_system_config),
+            call("/test/folder/subdir/yyy.tf", folder_config, self.sample_system_config),
+            call("/test/folder/zzz.tf", folder_config, self.sample_system_config)
+        ]
+
+        # Verify calls were made in the expected order
+        mock_workflow.assert_has_calls(expected_calls, any_order=False)
+
+        # Verify logging shows correct file count
+        mock_logger.info.assert_any_call("6 files found to process.")
+
+    @patch('src.hcl_processor.main.parse_args')
+    @patch('src.hcl_processor.main.load_system_config')
+    @patch('src.hcl_processor.main.load_config')
+    @patch('src.hcl_processor.main.os.walk')
+    @patch('src.hcl_processor.main.run_hcl_file_workflow')
+    @patch('src.hcl_processor.main.setup_logger')
+    @patch('src.hcl_processor.main.reset_markdown_file')
+    def test_main_folder_consistent_ordering_multiple_runs(self, mock_reset_markdown, mock_setup_logger, mock_workflow, mock_walk, mock_load_config, mock_load_system_config, mock_parse_args):
+        """Test that folder processing produces consistent ordering across multiple runs"""
+        # Setup mocks
+        mock_logger = Mock()
+        mock_setup_logger.return_value = mock_logger
+
+        mock_args = Mock()
+        mock_args.config_file = self.config_file
+        mock_args.debug = False
+        mock_parse_args.return_value = mock_args
+
+        mock_load_system_config.return_value = self.sample_system_config
+
+        folder_config = self.sample_config.copy()
+        folder_config["input"]["resource_data"] = {"folder": "/test/folder"}
+        mock_load_config.return_value = folder_config
+
+        # Mock os.walk to return files in different orders to simulate filesystem behavior
+        file_orders = [
+            [("/test/folder", [], ["c.tf", "a.tf", "b.tf"])],
+            [("/test/folder", [], ["a.tf", "c.tf", "b.tf"])],
+            [("/test/folder", [], ["b.tf", "a.tf", "c.tf"])]
+        ]
+
+        expected_calls = [
+            call("/test/folder/a.tf", folder_config, self.sample_system_config),
+            call("/test/folder/b.tf", folder_config, self.sample_system_config),
+            call("/test/folder/c.tf", folder_config, self.sample_system_config)
+        ]
+
+        # Run multiple times with different file orders
+        for i, file_order in enumerate(file_orders):
+            with self.subTest(run=i+1):
+                mock_walk.return_value = file_order
+                mock_workflow.reset_mock()
+
+                # Execute
+                result = main()
+
+                # Verify successful execution
+                self.assertEqual(result, 0)
+
+                # Verify files are always processed in alphabetical order regardless of input order
+                mock_workflow.assert_has_calls(expected_calls, any_order=False)
+
+    @patch('src.hcl_processor.main.parse_args')
+    @patch('src.hcl_processor.main.load_system_config')
     def test_main_system_config_failure(self, mock_load_system_config, mock_parse_args):
         """Test system config loading failure"""
         mock_args = Mock()
         mock_args.config_file = self.config_file
         mock_args.debug = False
         mock_parse_args.return_value = mock_args
-        
+
         mock_load_system_config.side_effect = Exception("System config error")
-        
+
         result = main()
-        
+
         self.assertEqual(result, 1)  # EXIT_SYSTEM_CONFIG_ERROR
 
     @patch('src.hcl_processor.main.parse_args')
@@ -171,12 +275,12 @@ class TestMain(unittest.TestCase):
         mock_args.config_file = self.config_file
         mock_args.debug = False
         mock_parse_args.return_value = mock_args
-        
+
         mock_load_system_config.return_value = self.sample_system_config
         mock_load_config.side_effect = ValueError("Config error")
-        
+
         result = main()
-        
+
         self.assertEqual(result, 2)  # exit_config_error
 
     @patch('src.hcl_processor.main.parse_args')
@@ -189,25 +293,25 @@ class TestMain(unittest.TestCase):
         # Setup mocks
         mock_logger = Mock()
         mock_setup_logger.return_value = mock_logger
-        
+
         mock_args = Mock()
         mock_args.config_file = self.config_file
         mock_args.debug = False
         mock_parse_args.return_value = mock_args
-        
+
         mock_load_system_config.return_value = self.sample_system_config
         mock_load_config.return_value = self.sample_config
-        
+
         # Mock os.walk to raise Bedrock error
         mock_walk.side_effect = EndpointConnectionError(endpoint_url="test")
-        
+
         # Config with folder to trigger os.walk
         folder_config = self.sample_config.copy()
         folder_config["input"]["resource_data"] = {"folder": "/test/folder"}
         mock_load_config.return_value = folder_config
-        
+
         result = main()
-        
+
         self.assertEqual(result, 5)  # exit_bedrock_error
 
     @patch('src.hcl_processor.main.parse_args')
@@ -220,25 +324,25 @@ class TestMain(unittest.TestCase):
         # Setup mocks
         mock_logger = Mock()
         mock_setup_logger.return_value = mock_logger
-        
+
         mock_args = Mock()
         mock_args.config_file = self.config_file
         mock_args.debug = False
         mock_parse_args.return_value = mock_args
-        
+
         mock_load_system_config.return_value = self.sample_system_config
         mock_load_config.return_value = self.sample_config
-        
+
         # Mock os.walk to raise unknown error
         mock_walk.side_effect = RuntimeError("Unknown error")
-        
+
         # Config with folder to trigger os.walk
         folder_config = self.sample_config.copy()
         folder_config["input"]["resource_data"] = {"folder": "/test/folder"}
         mock_load_config.return_value = folder_config
-        
+
         result = main()
-        
+
         self.assertEqual(result, 99)  # exit_unknown_error
 
     @patch('src.hcl_processor.main.parse_args')
@@ -251,15 +355,15 @@ class TestMain(unittest.TestCase):
         # Setup mocks
         mock_logger = Mock()
         mock_setup_logger.return_value = mock_logger
-        
+
         mock_args = Mock()
         mock_args.config_file = self.config_file
         mock_args.debug = False
         mock_parse_args.return_value = mock_args
-        
+
         mock_load_system_config.return_value = self.sample_system_config
         mock_load_config.return_value = self.sample_config
-        
+
         # Test different error types that should be caught in individual file processing
         test_errors = [
             EndpointConnectionError(endpoint_url="test"),
@@ -267,7 +371,7 @@ class TestMain(unittest.TestCase):
             ClientError({"Error": {"Code": "TestError", "Message": "Test"}}, "test_operation"),
             RuntimeError("Unknown error")
         ]
-        
+
         for error in test_errors:
             with self.subTest(error=type(error).__name__):
                 mock_workflow.side_effect = error
@@ -285,29 +389,29 @@ class TestMain(unittest.TestCase):
         # Setup mocks
         mock_logger = Mock()
         mock_setup_logger.return_value = mock_logger
-        
+
         mock_args = Mock()
         mock_args.config_file = self.config_file
         mock_args.debug = False
         mock_parse_args.return_value = mock_args
-        
+
         mock_load_system_config.return_value = self.sample_system_config
-        
+
         multiple_files_config = self.sample_config.copy()
         multiple_files_config["input"]["resource_data"]["files"] = ["test1.tf", "test2.tf", "test3.tf"]
         mock_load_config.return_value = multiple_files_config
-        
+
         # Mock workflow to fail on second file
         mock_workflow.side_effect = [None, Exception("File processing error"), None]
-        
+
         result = main()
-        
+
         # Should still return success (0) as it continues processing
         self.assertEqual(result, 0)
-        
+
         # Verify all files were attempted
         self.assertEqual(mock_workflow.call_count, 3)
-        
+
         # Verify error was logged
         mock_logger.info.assert_any_call("3 files found to process.")
 
@@ -320,21 +424,21 @@ class TestMain(unittest.TestCase):
         # Setup mocks
         mock_logger = Mock()
         mock_setup_logger.return_value = mock_logger
-        
+
         mock_args = Mock()
         mock_args.config_file = self.config_file
         mock_args.debug = False
         mock_parse_args.return_value = mock_args
-        
+
         mock_load_system_config.return_value = self.sample_system_config
-        
+
         # Config with no files or folder
         empty_config = self.sample_config.copy()
         empty_config["input"]["resource_data"] = {}
         mock_load_config.return_value = empty_config
-        
+
         result = main()
-        
+
         self.assertEqual(result, 0)
         mock_logger.info.assert_called_with("All files processed successfully.")
 

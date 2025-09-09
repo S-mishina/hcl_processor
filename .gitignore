@@ -6,3 +6,4 @@ config/config.yaml
 .coverage
 dist/*
 poetry.lock
+output/output.md

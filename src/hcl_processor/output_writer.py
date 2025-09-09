@@ -28,7 +28,7 @@ def output_md(md_title: str, config: dict) -> None:
             data = json.load(file)
         if isinstance(data, str):
             data = json.loads(data)
-        
+
         # Convert data to list if it's a dictionary
         if isinstance(data, dict):
             data = [data]
@@ -77,7 +77,7 @@ def output_md(md_title: str, config: dict) -> None:
             )
             rendered_size_kb = len(rendered) / 1024
             logger.debug(f"Rendered Markdown size: {rendered_size_kb:.2f} KB")
-            
+
             with open(config["output"]["markdown_path"], "a", encoding="utf-8") as md_file:
                 logger.debug(f"Rendered Markdown:\n {rendered}")
                 md_file.write(rendered + "\n")

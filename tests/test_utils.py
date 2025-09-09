@@ -22,10 +22,10 @@ class TestUtils(unittest.TestCase):
         """Test ensure_directory_exists with an existing directory"""
         # Create a test file path in existing directory
         test_file = os.path.join(self.test_dir, "test.txt")
-        
+
         # Should not raise any exception
         ensure_directory_exists(test_file)
-        
+
         # Directory should still exist
         self.assertTrue(os.path.exists(self.test_dir))
 
@@ -34,13 +34,13 @@ class TestUtils(unittest.TestCase):
         # Create a file path in non-existing directory
         new_dir = os.path.join(self.test_dir, "new_folder", "subfolder")
         test_file = os.path.join(new_dir, "test.txt")
-        
+
         # Directory should not exist initially
         self.assertFalse(os.path.exists(new_dir))
-        
+
         # Call function
         ensure_directory_exists(test_file)
-        
+
         # Directory should now exist
         self.assertTrue(os.path.exists(new_dir))
 
@@ -50,10 +50,10 @@ class TestUtils(unittest.TestCase):
         nested_path = os.path.join(
             self.test_dir, "level1", "level2", "level3", "test.txt"
         )
-        
+
         # Call function
         ensure_directory_exists(nested_path)
-        
+
         # All directories should be created
         expected_dir = os.path.join(self.test_dir, "level1", "level2", "level3")
         self.assertTrue(os.path.exists(expected_dir))
@@ -63,9 +63,9 @@ class TestUtils(unittest.TestCase):
         """Test ensure_directory_exists handles permission errors gracefully"""
         # Mock os.makedirs to raise PermissionError
         mock_makedirs.side_effect = PermissionError("Permission denied")
-        
+
         test_file = os.path.join(self.test_dir, "restricted", "test.txt")
-        
+
         # Should raise PermissionError
         with self.assertRaises(PermissionError):
             ensure_directory_exists(test_file)
@@ -75,9 +75,9 @@ class TestUtils(unittest.TestCase):
         """Test ensure_directory_exists handles other OS errors"""
         # Mock os.makedirs to raise OSError
         mock_makedirs.side_effect = OSError("Disk full")
-        
+
         test_file = os.path.join(self.test_dir, "error_dir", "test.txt")
-        
+
         # Should raise OSError
         with self.assertRaises(OSError):
             ensure_directory_exists(test_file)
@@ -86,7 +86,7 @@ class TestUtils(unittest.TestCase):
         """Test ensure_directory_exists with just a file name (no directory)"""
         # File name without directory separator
         ensure_directory_exists("test.txt")
-        
+
         # Should not raise any exception
         # Current directory should still exist
         self.assertTrue(os.path.exists("."))
@@ -100,7 +100,7 @@ class TestUtils(unittest.TestCase):
         """Test ensure_directory_exists with root-like path"""
         # Use a path that starts from root but goes to test dir
         root_style_path = os.path.join("/", "tmp", "test_file.txt")
-        
+
         # Should handle without issues (might create or use existing /tmp)
         # We won't actually test creation in /tmp for safety
         try:

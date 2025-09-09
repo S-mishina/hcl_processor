@@ -16,13 +16,13 @@ def _execute_failback_strategy(resource_dict: dict, locals_str: str, modules_raw
     """
     Execute failback strategy with chunk processing (internal function)
     This implements the core failback philosophy: continue processing even when individual chunks fail (pass strategy)
-    
+
     Returns:
         list: Flattened list of processed results (partial success included)
     """
     search_resource = system_config["constants"]["file_processing"]["default_search_resource"]
     module_name = get_modules_name(resource_dict, search_resource)
-    
+
     # Get resources for failback processing
     if config["input"]["failback"]["type"] == "resource":
         # TODO: Not yet guaranteed to work
@@ -31,12 +31,12 @@ def _execute_failback_strategy(resource_dict: dict, locals_str: str, modules_raw
         resources = resource_dict["module"][0][module_name][
             config["input"]["failback"]["options"]["target"]
         ]
-    
+
     # Process chunks with failback strategy
     hcl_output = []
     successful_chunks = 0
     total_chunks = len(resources)
-    
+
     try:
         for i, resource in enumerate(resources):
             try:
@@ -58,9 +58,9 @@ def _execute_failback_strategy(resource_dict: dict, locals_str: str, modules_raw
     except Exception as e:
         log_exception(logger, e, "Error processing resource chunk")
         pass  # Continue even if chunk processing fails
-    
+
     logger.info(f"Failback completed: {successful_chunks}/{total_chunks} chunks processed successfully")
-    
+
     # Flatten results (with pass strategy for integration errors)
     flattened_list = []
     for json_obj in hcl_output:
@@ -76,31 +76,31 @@ def _execute_failback_strategy(resource_dict: dict, locals_str: str, modules_raw
 def _process_main_bedrock_api(combined_str: str, modules_raw: str, config: dict, system_config: dict) -> dict:
     """
     Process main Bedrock API call (internal function)
-    
+
     Returns:
         dict: Validated output data
     """
     output_str = aws_bedrock(combined_str, modules_raw, config, system_config)
     logger.debug(f"Output string:\n {output_str}")
-    
+
     validated_output = validate_output_json(
         output_str, config["bedrock"]["output_json"]
     )
     logger.debug(f"Validated output:\n {validated_output}")
-    
+
     return validated_output
 
 
 def _write_output_files(output_data: dict | list, file_path: str, config: dict, system_config: dict) -> None:
     """
     Write JSON and Markdown output files (internal function)
-    
+
     Args:
         output_data: Data to output (dict or list)
     """
     # Create output directory
     ensure_directory_exists(config["output"]["json_path"])
-    
+
     # Write JSON output
     try:
         # TODO: Need to consider creating a temporary file.
@@ -110,7 +110,7 @@ def _write_output_files(output_data: dict | list, file_path: str, config: dict, 
     except Exception as e:
         log_exception(logger, e, "Error writing JSON output")
         raise
-    
+
     # Write Markdown output
     tf_extension = system_config["constants"]["file_processing"]["terraform_extension"]
     output_md(os.path.basename(file_path).replace(tf_extension, ""), config)
@@ -119,24 +119,24 @@ def _write_output_files(output_data: dict | list, file_path: str, config: dict, 
 def _load_and_prepare_hcl_data(file_path: str, config: dict) -> tuple[dict, str, str, str]:
     """
     Load and prepare HCL data from the specified file and local files.
-    
+
     Returns:
         tuple: (resource_dict, combined_str, modules_raw, locals_str)
     """
     # Read HCL file and local files, prepare data for processing.
     locals_str = read_local_files(config["input"]["local_files"])
-    
+
     # read HCL file
     hcl_raw, _ = read_tf_file(file_path)
     if hcl_raw is None:
         logger.warning(f"File not found or empty: {file_path}")
         raise FileNotFoundError(f"File not found or empty: {file_path}")
-    
+
     # read modules if enabled
     modules_raw = None
     if config["input"]["modules"].get("enabled", True):
         modules_raw, _ = read_tf_file(config["input"]["modules"]["path"])
-    
+
     # Parse HCL content
     try:
         resource_dict = hcl2.loads(hcl_raw)
@@ -147,7 +147,7 @@ def _load_and_prepare_hcl_data(file_path: str, config: dict) -> tuple[dict, str,
     # Create combined string
     combined_str = f"{locals_str}\n ---resource hcl \n {resource_dict}\n"
     logger.debug(f"Combined string:\n {combined_str}")
-    
+
     return resource_dict, combined_str, modules_raw, locals_str
 
 
@@ -164,22 +164,22 @@ def run_hcl_file_workflow(file_path: str, config: dict, system_config: dict) -> 
     """
     with measure_time(f"HCL file processing: {os.path.basename(file_path)}", logger):
         resource_dict, combined_str, modules_raw, locals_str = _load_and_prepare_hcl_data(file_path, config)
-        
+
         try:
             # 2. Main API processing
             validated_output = _process_main_bedrock_api(combined_str, modules_raw, config, system_config)
-            
+
             # Check if result is empty or insufficient, which indicates need for failback
             if isinstance(validated_output, list) and len(validated_output) == 0:
                 logger.warning("API returned empty result, triggering failback strategy...")
                 raise json.decoder.JSONDecodeError("Empty result from API", "", 0)
-            
+
             # 3. Output processing
             _write_output_files(validated_output, file_path, config, system_config)
             logger.info(f"Successfully processed file: {file_path}")
         except json.decoder.JSONDecodeError:
             logger.error("Prompt too large, malformed JSON, or empty result - retrying in chunks...")
-            
+
             if config["input"]["failback"]["enabled"]:
                 # 4. Execute failback strategy
                 flattened_list = _execute_failback_strategy(resource_dict, locals_str, modules_raw, config, system_config)
@@ -226,7 +226,7 @@ def read_local_files(local_files: list) -> str:
     if not local_files:
         logger.debug("No local files to read")
         return ""
-        
+
     with measure_time(f"reading {len(local_files)} local files", logger):
         result = []
         total_size_kb = 0

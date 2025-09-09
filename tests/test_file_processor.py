@@ -190,7 +190,7 @@ def test_failback_resource_type_branch(mock_output_md, mock_get_module, mock_val
     """Test resource type branch in failback processing (lines 68-70)"""
     file_path = tmp_path / "test.tf"
     file_path.write_text("content")
-    
+
     config = {
         "input": {
             "local_files": [],
@@ -212,14 +212,14 @@ def test_failback_resource_type_branch(mock_output_md, mock_get_module, mock_val
             }
         }
     }
-    
+
     # Mock resource structure for resource type failback
     mock_hcl2.return_value = {
         "resource": [{"res1": {}}, {"res2": {}}],
         "module": [{"test_module": {"monitors": [{}]}}]
     }
     mock_get_module.return_value = "test_module"
-    
+
     # First call raises JSONDecodeError, subsequent calls succeed
     mock_bedrock.side_effect = [
         json.decoder.JSONDecodeError("test", "", 0),
@@ -230,7 +230,7 @@ def test_failback_resource_type_branch(mock_output_md, mock_get_module, mock_val
         [{"result": "success1"}],
         [{"result": "success2"}]
     ]
-    
+
     run_hcl_file_workflow(str(file_path), config, system_config)
     mock_output_md.assert_called()
 
@@ -244,7 +244,7 @@ def test_failback_chunk_error_pass_strategy(mock_output_md, mock_get_module, moc
     """Test individual chunk error handling with pass strategy (lines 84-85)"""
     file_path = tmp_path / "test.tf"
     file_path.write_text("content")
-    
+
     config = {
         "input": {
             "local_files": [],
@@ -266,12 +266,12 @@ def test_failback_chunk_error_pass_strategy(mock_output_md, mock_get_module, moc
             }
         }
     }
-    
+
     mock_hcl2.return_value = {
         "module": [{"test_module": {"monitors": [{"chunk1": {}}, {"chunk2": {}}, {"chunk3": {}}]}}]
     }
     mock_get_module.return_value = "test_module"
-    
+
     # First call fails, then mixed chunk results
     mock_bedrock.side_effect = [
         json.decoder.JSONDecodeError("test", "", 0),
@@ -283,7 +283,7 @@ def test_failback_chunk_error_pass_strategy(mock_output_md, mock_get_module, moc
         [{"result": "chunk1_success"}],
         [{"result": "chunk3_success"}]
     ]
-    
+
     # Should not raise exception due to pass strategy
     run_hcl_file_workflow(str(file_path), config, system_config)
     mock_output_md.assert_called()
@@ -298,7 +298,7 @@ def test_failback_extend_error_handling(mock_output_md, mock_get_module, mock_va
     """Test error in flattened list extend operation (lines 88-91)"""
     file_path = tmp_path / "test.tf"
     file_path.write_text("content")
-    
+
     config = {
         "input": {
             "local_files": [],
@@ -320,20 +320,20 @@ def test_failback_extend_error_handling(mock_output_md, mock_get_module, mock_va
             }
         }
     }
-    
+
     mock_hcl2.return_value = {
         "module": [{"test_module": {"monitors": [{"chunk1": {}}]}}]
     }
     mock_get_module.return_value = "test_module"
-    
+
     mock_bedrock.side_effect = [
         json.decoder.JSONDecodeError("test", "", 0),
         '{"result": "success"}'
     ]
-    
+
     # Return non-iterable to trigger extend error
     mock_validate.return_value = "not_a_list"
-    
+
     # Should handle extend error gracefully
     run_hcl_file_workflow(str(file_path), config, system_config)
     mock_output_md.assert_called()
@@ -346,7 +346,7 @@ def test_failback_disabled_debug_mode(mock_logger, mock_hcl2, mock_bedrock, tmp_
     """Test failback disabled with debug mode (lines 101-105)"""
     file_path = tmp_path / "test.tf"
     file_path.write_text("content")
-    
+
     config = {
         "input": {
             "local_files": [],
@@ -363,11 +363,11 @@ def test_failback_disabled_debug_mode(mock_logger, mock_hcl2, mock_bedrock, tmp_
             }
         }
     }
-    
+
     mock_hcl2.return_value = {"resource": []}
     mock_bedrock.side_effect = json.decoder.JSONDecodeError("test", "", 0)
     mock_logger.isEnabledFor.return_value = True  # Debug mode enabled
-    
+
     # Should raise exception in debug mode
     with pytest.raises(json.decoder.JSONDecodeError):
         run_hcl_file_workflow(str(file_path), config, system_config)
@@ -380,7 +380,7 @@ def test_failback_disabled_non_debug_mode(mock_logger, mock_hcl2, mock_bedrock, 
     """Test failback disabled without debug mode (lines 101-105)"""
     file_path = tmp_path / "test.tf"
     file_path.write_text("content")
-    
+
     config = {
         "input": {
             "local_files": [],
@@ -397,11 +397,11 @@ def test_failback_disabled_non_debug_mode(mock_logger, mock_hcl2, mock_bedrock, 
             }
         }
     }
-    
+
     mock_hcl2.return_value = {"resource": []}
     mock_bedrock.side_effect = json.decoder.JSONDecodeError("test", "", 0)
     mock_logger.isEnabledFor.return_value = False  # Debug mode disabled
-    
+
     # Should return without raising exception
     result = run_hcl_file_workflow(str(file_path), config, system_config)
     assert result is None
@@ -433,7 +433,7 @@ def test_empty_result_triggers_failback(
     """Test that empty result from API triggers failback strategy"""
     file_path = tmp_path / "test.tf"
     file_path.write_text("content")
-    
+
     config = {
         "input": {
             "local_files": [],
@@ -455,13 +455,13 @@ def test_empty_result_triggers_failback(
             }
         }
     }
-    
+
     # First call returns empty list, subsequent calls in failback succeed
     mock_bedrock.side_effect = [
         '[]',  # Main API call returns empty result
         '{"result": "success1"}',  # Failback chunk 1 succeeds
     ]
-    
+
     with patch(
         "hcl_processor.file_processor.validate_output_json",
         side_effect=[[], [{"result": "success1"}]],  # First empty, then success
