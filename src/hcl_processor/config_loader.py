@@ -249,11 +249,11 @@ def load_config(config_path: str) -> dict:
             # First validate the base configuration
             jsonschema.validate(instance=config, schema=schema)
             logger.debug("Configuration schema validation passed")
-            
+
             # Then merge with defaults
             config = merge_defaults(config, default_config)
             logger.debug("Configuration merged with defaults")
-            
+
             logger.debug(f"Config after merging defaults:\n {config}")
             return config
         except jsonschema.ValidationError as e:

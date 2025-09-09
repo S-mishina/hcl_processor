@@ -29,7 +29,7 @@ class TestOutputWriter(unittest.TestCase):
                 "extra_field": "should not appear"
             }
         ]
-        
+
         # Create a JSON file
         with open(self.json_path, "w") as f:
             json.dump(test_data, f)
@@ -56,7 +56,7 @@ class TestOutputWriter(unittest.TestCase):
         self.assertTrue(os.path.exists(self.md_path))
         with open(self.md_path, "r") as f:
             content = f.read()
-            
+
         # Verify the expected output
         expected_header = "| " + " | ".join(config["schema_columns"]) + " |"
         expected_row = "| " + " | ".join([
@@ -66,7 +66,7 @@ class TestOutputWriter(unittest.TestCase):
             "80%",
             "5m"
         ]) + " |"
-        
+
         self.assertIn("#### Test Title", content)
         self.assertIn(expected_header, content)
         self.assertIn(expected_row, content)
@@ -75,7 +75,7 @@ class TestOutputWriter(unittest.TestCase):
     def test_custom_template_string(self):
         # Test data
         test_data = [{"name": "test", "value": "123"}]
-        
+
         with open(self.json_path, "w") as f:
             json.dump(test_data, f)
 
@@ -93,14 +93,14 @@ class TestOutputWriter(unittest.TestCase):
 
         with open(self.md_path, "r") as f:
             content = f.read()
-            
+
         self.assertIn("# Custom Test", content)
         self.assertIn("* test: 123", content)
 
     def test_custom_template_file(self):
         # Test data
         test_data = [{"name": "test", "value": "123"}]
-        
+
         with open(self.json_path, "w") as f:
             json.dump(test_data, f)
 
@@ -123,14 +123,14 @@ class TestOutputWriter(unittest.TestCase):
 
         with open(self.md_path, "r") as f:
             content = f.read()
-            
+
         self.assertIn("## File Template Test", content)
         self.assertIn("* test: 123", content)
 
     def test_missing_template(self):
         # Test data
         test_data = [{"name": "test"}]
-        
+
         with open(self.json_path, "w") as f:
             json.dump(test_data, f)
 
@@ -148,7 +148,7 @@ class TestOutputWriter(unittest.TestCase):
 
         with open(self.md_path, "r") as f:
             content = f.read()
-            
+
         self.assertIn("#### No Template Test", content)
         self.assertIn("| name |", content)
         self.assertIn("| test |", content)

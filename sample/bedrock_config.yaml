@@ -102,11 +102,11 @@ output:
 input:
   # Note: Please describe the hcl file of terraform in which you want to generate the document.
   resource_data:
-    files:
+    # files:
       # - test_data/monitor1/elasticache.tf
-      - sample/test_data/monitor/appsync_monitor.tf
+      # - sample/test_data/monitor/appsync_monitor.tf
       # - sample/test_data/monitor/apigateway_monitor.tf
-    # folder: test_data/monitor
+    folder: sample/test_data/monitor
 
   # Note: local.tf <env>(key):<directly>/file(value)
   local_files:

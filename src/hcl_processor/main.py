@@ -21,13 +21,13 @@ def main() -> int:
     EXIT_SYSTEM_CONFIG_ERROR = 1
     args = parse_args()
     config_path = args.config_file
-    
+
     # Setup unified logging
     log_level = logging.DEBUG if args.debug else logging.INFO
-    
+
     # Setup root hcl_processor logger first for all child loggers
     setup_logger("hcl_processor", level=log_level)
-    
+
     # Setup main logger
     logger = setup_logger("hcl_processor.main", level=log_level)
     try:
@@ -44,10 +44,10 @@ def main() -> int:
         return system_config["system_call"]["exit_config_error"]
 
     resource = config["input"]["resource_data"]
-    
+
     # Reset markdown file once at the start of command execution
     reset_markdown_file(config["output"]["markdown_path"])
-    
+
     try:
         if resource.get("files"):
             logger.info("Processing files...")
@@ -61,17 +61,28 @@ def main() -> int:
         elif resource.get("folder"):
             logger.info("Processing folder...")
             logger.info(f"Processing all .tf files in folder: {resource['folder']}")
+
+            # Collect all .tf files in deterministic order
+            tf_files = []
+            tf_extension = system_config["constants"]["file_processing"]["terraform_extension"]
+
             for root, _, files in os.walk(resource["folder"]):
-                for file_name in files:
-                    tf_extension = system_config["constants"]["file_processing"]["terraform_extension"]
+                for file_name in sorted(files):  # Sort within directory
                     if file_name.endswith(tf_extension):
-                        try:
-                            run_hcl_file_workflow(
-                                os.path.join(root, file_name), config, system_config
-                            )
-                        except Exception as e:
-                            log_exception(logger, e, f"Failed processing file {file_name}")
-                            continue
+                        tf_files.append(os.path.join(root, file_name))
+
+            # Sort all collected files for consistent processing order
+            tf_files.sort()
+
+            logger.info(f"{len(tf_files)} files found to process.")
+
+            # Process files in deterministic order
+            for file_path in tf_files:
+                try:
+                    run_hcl_file_workflow(file_path, config, system_config)
+                except Exception as e:
+                    log_exception(logger, e, f"Failed processing file {file_path}")
+                    continue
         if system_config["system_call"]["exit_success"] == 0:
             logger.info("All files processed successfully.")
         else:

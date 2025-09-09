@@ -92,7 +92,7 @@ def aws_bedrock(prompt: str, modules_data: str | None, config: dict, system_conf
     logger.debug(f"Prompt: {prompt}")
     messages = [{"role": "user", "content": [{"text": prompt}]}]
     system = [{"text": final_system_prompt}]
-    
+
     inference_config = {
         "maxTokens": config["bedrock"]["payload"].get(
             "max_tokens", system_config["default_bedrock"]["payload"]["max_tokens"]
@@ -162,11 +162,11 @@ def aws_bedrock(prompt: str, modules_data: str | None, config: dict, system_conf
                     result = json.dumps(tool_use["input"].get(system_config["constants"]["bedrock"]["target_json_key"], []), ensure_ascii=False)
                     logger.debug(f"JSON validation result: {result}")
                     return result
-            
+
             # Handle text response
             if "text" in content:
                 return content.get("text", "")
-            
+
             raise json.JSONDecodeError("Invalid response format: missing text or toolUse", "", 0)
         except (AttributeError, TypeError, json.JSONDecodeError) as e:
             log_exception(logger, e, "Failed to parse Bedrock response")

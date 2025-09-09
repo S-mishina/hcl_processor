@@ -26,7 +26,7 @@ def create_colored_formatter() -> logging.Formatter:
             reset_color = LOG_COLORS['RESET']
             record.levelname = f"{log_color}{record.levelname}{reset_color}"
             return super().format(record)
-    
+
     return ColoredFormatter(
         fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S"
@@ -34,31 +34,31 @@ def create_colored_formatter() -> logging.Formatter:
 
 
 def setup_logger(
-    name: str = __name__, 
-    level: int = logging.INFO, 
+    name: str = __name__,
+    level: int = logging.INFO,
     enable_colors: bool = True
 ) -> logging.Logger:
     """
     Setup unified logging configuration
-    
+
     Args:
         name: Logger name
         level: Log level
         enable_colors: Enable color output
-        
+
     Returns:
         Configured logger instance
     """
     logger = logging.getLogger(name)
-    
+
     # Clear existing handlers
     if logger.handlers:
         logger.handlers.clear()
-    
+
     # Setup console handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(level)
-    
+
     # Setup formatter
     if enable_colors and sys.stdout.isatty():
         formatter = create_colored_formatter()
@@ -67,26 +67,26 @@ def setup_logger(
             fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S"
         )
-    
+
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     logger.setLevel(level)
-    
+
     # Disable propagation to parent loggers
     logger.propagate = False
-    
+
     return logger
 
 
 def log_exception(
-    logger: logging.Logger, 
-    exception: Exception, 
+    logger: logging.Logger,
+    exception: Exception,
     context: Optional[str] = None,
     level: int = logging.ERROR
 ) -> None:
     """
     Unified exception logging
-    
+
     Args:
         logger: Logger instance
         exception: Exception instance
@@ -96,9 +96,9 @@ def log_exception(
     error_msg = f"{type(exception).__name__}: {str(exception)}"
     if context:
         error_msg = f"{context} - {error_msg}"
-    
+
     logger.log(level, error_msg)
-    
+
     # Output stack trace for DEBUG level
     if logger.isEnabledFor(logging.DEBUG):
         logger.debug("Stack trace:", exc_info=True)
@@ -121,8 +121,8 @@ def log_operation_success(logger: logging.Logger, operation: str, target: str = 
 
 
 def log_operation_failure(
-    logger: logging.Logger, 
-    operation: str, 
+    logger: logging.Logger,
+    operation: str,
     exception: Exception,
     target: str = ""
 ) -> None:
