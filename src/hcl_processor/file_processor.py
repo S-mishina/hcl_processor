@@ -4,7 +4,8 @@ import os
 
 import hcl2
 
-from .bedrock_client import aws_bedrock
+from .llm_provider import LLMProvider, PayloadTooLargeError
+from .provider_factory import create_llm_provider # Import create_llm_provider from main.py
 from .output_writer import output_md, validate_output_json
 from .utils import ensure_directory_exists, measure_time
 from .logger_config import get_logger, log_exception
@@ -12,7 +13,7 @@ from .logger_config import get_logger, log_exception
 logger = get_logger("file_processor")
 
 
-def _execute_failback_strategy(resource_dict: dict, locals_str: str, modules_raw: str, config: dict, system_config: dict) -> list:
+def _execute_failback_strategy(resource_dict: dict, locals_str: str, modules_raw: str, config: dict, system_config: dict, provider: LLMProvider) -> list:
     """
     Execute failback strategy with chunk processing (internal function)
     This implements the core failback philosophy: continue processing even when individual chunks fail (pass strategy)
@@ -41,11 +42,11 @@ def _execute_failback_strategy(resource_dict: dict, locals_str: str, modules_raw
         for i, resource in enumerate(resources):
             try:
                 combined_str = f"{locals_str}\n{resource}\n"
-                partial_output = aws_bedrock(
-                    combined_str, modules_raw, config, system_config
+                partial_output = provider.invoke_single(
+                    combined_str, modules_raw
                 )
                 validated_partial = validate_output_json(
-                    partial_output, config["bedrock"]["output_json"]
+                    partial_output, provider.output_schema
                 )
                 hcl_output.append(validated_partial)
                 successful_chunks += 1
@@ -64,33 +65,14 @@ def _execute_failback_strategy(resource_dict: dict, locals_str: str, modules_raw
     # Flatten results (with pass strategy for integration errors)
     flattened_list = []
     for json_obj in hcl_output:
-        try:
-            flattened_list.extend(json_obj)
-        except Exception as e:
-            log_exception(logger, e, f"Error extending flattened list with: {json_obj}")
-            pass  # Continue processing even if individual result integration fails
+        if json_obj: # Only extend if json_obj is not empty
+            try:
+                flattened_list.extend(json_obj)
+            except Exception as e:
+                log_exception(logger, e, f"Error extending flattened list with: {json_obj}")
+                pass  # Continue processing even if individual result integration fails
 
     return flattened_list
-
-
-def _process_main_bedrock_api(combined_str: str, modules_raw: str, config: dict, system_config: dict) -> dict:
-    """
-    Process main Bedrock API call (internal function)
-
-    Returns:
-        dict: Validated output data
-    """
-    output_str = aws_bedrock(combined_str, modules_raw, config, system_config)
-    logger.debug(f"Output string:\n {output_str}")
-
-    validated_output = validate_output_json(
-        output_str, config["bedrock"]["output_json"]
-    )
-    logger.debug(f"Validated output:\n {validated_output}")
-
-    return validated_output
-
-
 def _write_output_files(output_data: dict | list, file_path: str, config: dict, system_config: dict) -> None:
     """
     Write JSON and Markdown output files (internal function)
@@ -165,24 +147,29 @@ def run_hcl_file_workflow(file_path: str, config: dict, system_config: dict) -> 
     with measure_time(f"HCL file processing: {os.path.basename(file_path)}", logger):
         resource_dict, combined_str, modules_raw, locals_str = _load_and_prepare_hcl_data(file_path, config)
 
+        # Obtain provider instance
+        provider = create_llm_provider(config, system_config)
+
         try:
-            # 2. Main API processing
-            validated_output = _process_main_bedrock_api(combined_str, modules_raw, config, system_config)
+            # 2. Main API processing using provider
+            output_str = provider.invoke_single(combined_str, modules_raw)
+            validated_output = validate_output_json(output_str, provider.output_schema)
 
             # Check if result is empty or insufficient, which indicates need for failback
             if isinstance(validated_output, list) and len(validated_output) == 0:
                 logger.warning("API returned empty result, triggering failback strategy...")
-                raise json.decoder.JSONDecodeError("Empty result from API", "", 0)
+                # Use PayloadTooLargeError for consistent trigger
+                raise PayloadTooLargeError("Empty result or insufficient response, treating as payload issue for failback.")
 
             # 3. Output processing
             _write_output_files(validated_output, file_path, config, system_config)
             logger.info(f"Successfully processed file: {file_path}")
-        except json.decoder.JSONDecodeError:
-            logger.error("Prompt too large, malformed JSON, or empty result - retrying in chunks...")
+        except (PayloadTooLargeError, json.decoder.JSONDecodeError) as e: # Catch PayloadTooLargeError
+            logger.error(f"Error (potentially payload size or malformed JSON) - retrying in chunks: {e}")
 
             if config["input"]["failback"]["enabled"]:
                 # 4. Execute failback strategy
-                flattened_list = _execute_failback_strategy(resource_dict, locals_str, modules_raw, config, system_config)
+                flattened_list = _execute_failback_strategy(resource_dict, locals_str, modules_raw, config, system_config, provider) # Pass provider
                 _write_output_files(flattened_list, file_path, config, system_config)
             else:
                 logger.error("Failback is not enabled, skipping chunk processing.")

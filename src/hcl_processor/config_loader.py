@@ -10,6 +10,98 @@ from .logger_config import get_logger
 
 logger = get_logger("config_loader")
 
+# Constants for schema definitions
+BEDROCK_PROVIDER_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "system_prompt": {"type": "string"},
+        "payload": {
+            "type": "object",
+            "properties": {
+                "anthropic_version": {"type": "string"},
+                "max_tokens": {"type": "integer"},
+                "temperature": {"type": "number"},
+                "top_p": {"type": "number"},
+                "top_k": {"type": "number"},
+            },
+            "required": ["anthropic_version", "max_tokens", "temperature", "top_p", "top_k"],
+        },
+        "read_timeout": {"type": "integer"},
+        "connect_timeout": {"type": "integer"},
+        "retries": {"type": "object"},
+        "output_json": {"type": "object"},
+        "aws_profile": {"type": "string"},
+        "aws_region": {"type": "string"},
+        "model_id": {"type": "string"},
+    },
+    "required": ["system_prompt", "payload", "output_json"],
+    "additionalProperties": False
+}
+
+PROVIDER_KEYS = ["bedrock"] # This will be extended for other providers later
+
+CONFIG_SCHEMA_BASE = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "provider_config": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "enum": PROVIDER_KEYS},
+                "settings": {"type": "object"} # This will be replaced with specific schema later
+            },
+            "required": ["name", "settings"],
+        },
+        "input": {
+            "type": "object",
+            "properties": {
+                "resource_data": {
+                    "type": "object",
+                    "oneOf": [
+                        {"required": ["files"], "properties": {"files": {"type": "array", "items": {"type": "string"}}}},
+                        {"required": ["folder"], "properties": {"folder": {"type": "string"}}}
+                    ]
+                },
+                "modules": {
+                    "type": "object",
+                    "properties": {"path": {"type": "string"}, "enabled": {"type": "boolean"}},
+                    "required": ["enabled"]
+                },
+                "local_files": {
+                    "type": "array",
+                    "items": {"type": "object", "additionalProperties": {"type": "string"}}
+                },
+                "failback": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {"type": "boolean"},
+                        "type": {"type": "string", "enum": ["resource", "modules"]},
+                        "options": {
+                            "type": "object",
+                            "properties": {"target": {"type": "string"}},
+                            "required": ["target"]
+                        }
+                    },
+                    "required": ["enabled", "type"]
+                },
+            },
+            "required": ["resource_data", "modules", "local_files"]
+        },
+        "schema_columns": {"type": "array", "items": {"type": "string"}},
+        "output": {
+            "type": "object",
+            "properties": {
+                "json_path": {"type": "string"},
+                "markdown_path": {"type": "string"},
+                "template": {"oneOf": [{"type": "string"}, {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}]}
+            },
+            "required": ["json_path", "markdown_path"]
+        },
+    },
+    "required": ["provider_config", "input", "output"],
+    "additionalProperties": False
+}
+
 
 def get_default_config() -> dict:
     """
@@ -92,165 +184,79 @@ def load_system_config(system_config: dict = get_system_config()) -> dict:
 
 def load_config(config_path: str) -> dict:
     """
-    Load the configuration from a YAML file.
+    Load the configuration from a YAML file, validate it, and normalize provider-specific settings.
     Args:
         config_path (str): Path to the configuration YAML file.
     Returns:
-        dict: Parsed configuration.
+        dict: Parsed and normalized configuration.
     Raises:
-        ValueError: If the configuration file is not found or cannot be loaded.
+        ValueError: If the configuration file is not found, cannot be loaded, or is invalid.
     """
     with measure_time(f"Configuration loading: {config_path}", logger):
         with open(config_path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-        logger.debug(f"Loaded config:\n {config}")
+            raw_config = yaml.safe_load(f)
+        logger.debug(f"Loaded raw config:\n {raw_config}")
+
+        # --- 1. Identify active provider and validate exclusivity (Pattern D-config) ---
+        active_provider_name = None
+        found_providers = [key for key in PROVIDER_KEYS if key in raw_config]
+
+        if len(found_providers) == 0:
+            raise ValueError(f"Invalid configuration: No LLM provider (e.g., '{PROVIDER_KEYS[0]}') specified at the top level. Supported providers: {', '.join(PROVIDER_KEYS)}")
+        elif len(found_providers) > 1:
+            raise ValueError(f"Invalid configuration: Multiple LLM providers specified at the top level: {', '.join(found_providers)}. Only one is allowed.")
+
+        active_provider_name = found_providers[0]
+        # Get provider-specific settings without removing from raw_config yet
+        provider_specific_settings = raw_config[active_provider_name]
+
+        # --- 2. Create normalized config (internal representation) ---
+        # Initialize config_for_internal_use with provider_config and other expected top-level keys
+        config_for_internal_use = {
+            "provider_config": {
+                "name": active_provider_name,
+                "settings": provider_specific_settings
+            }
+        }
+        # Copy other allowed top-level keys from raw_config
+        allowed_top_level_keys = ["input", "output", "schema_columns"]
+        for key in allowed_top_level_keys:
+            if key in raw_config:
+                config_for_internal_use[key] = raw_config[key]
+
+        # Check for any unexpected top-level keys in raw_config that are not "active_provider_name" or "allowed_top_level_keys"
+        # This acts as an additional check for extraneous keys that are not provider or common config
+        for key in raw_config:
+            if key != active_provider_name and key not in allowed_top_level_keys and key not in PROVIDER_KEYS: # Add PROVIDER_KEYS to avoid checking against itself if multiple are present
+                raise ValueError(f"Invalid configuration: Unexpected top-level key '{key}' found. Only one LLM provider key and keys like {', '.join(allowed_top_level_keys)} are allowed.")
+
+
+        config = config_for_internal_use
+        logger.debug(f"Normalized config (internal representation for validation):\n {config}")
 
         # Load default configuration
         default_config = get_default_config()
 
-        # Define schema
-        schema = {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "type": "object",
-        "properties": {
-            "bedrock": {
-                "type": "object",
-                "properties": {
-                    "aws_profile": {"type": "string"},
-                    "aws_region": {"type": "string"},
-                    "model_id": {"type": "string"},
-                    "system_prompt": {"type": "string"},
-                    "payload": {
-                        "type": "object",
-                        "properties": {
-                            "anthropic_version": {"type": "string"},
-                            "max_tokens": {"type": "integer"},
-                            "temperature": {"type": "number"},
-                            "top_p": {"type": "number"},
-                            "top_k": {"type": "number"},
-                        },
-                        "required": [
-                            "anthropic_version",
-                            "max_tokens",
-                            "temperature",
-                            "top_p",
-                            "top_k",
-                        ],
-                    },
-                    "read_timeout": {"type": "integer"},
-                    "connect_timeout": {"type": "integer"},
-                    "retries": {"type": "object"},
-                    "output_json": {"type": "object"},
-                },
-                "required": ["system_prompt", "payload", "output_json"],
-            },
-            "input": {
-                "type": "object",
-                "properties": {
-                    "resource_data": {
-                        "type": "object",
-                        "oneOf": [
-                            {
-                                "properties": {
-                                    "files": {
-                                        "type": "array",
-                                        "items": {"type": "string"},
-                                    }
-                                },
-                                "required": ["files"],
-                                "not": {"required": ["folder"]},
-                            },
-                            {
-                                "properties": {"folder": {"type": "string"}},
-                                "required": ["folder"],
-                                "not": {"required": ["files"]},
-                            },
-                        ],
-                    },
-                    "modules": {
-                        "type": "object",
-                        "properties": {
-                            "path": {"type": "string"},
-                            "enabled": {"type": "boolean"},
-                        },
-                        "required": ["enabled"],
-                    },
-                    "local_files": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "additionalProperties": {"type": "string"},
-                        },
-                    },
-                    "failback": {
-                        "type": "object",
-                        "properties": {
-                            "enabled": {"type": "boolean"},
-                            "type": {"type": "string", "enum": ["resource", "modules"]},
-                            "options": {
-                                "type": "object",
-                                "properties": {"target": {"type": "string"}},
-                                "required": ["target"],
-                            },
-                        },
-                        "required": ["enabled", "type"],
-                        "allOf": [
-                            {
-                                "if": {"properties": {"type": {"const": "modules"}}},
-                                "then": {"required": ["options"]},
-                            },
-                            {
-                                "if": {"properties": {"type": {"const": "resource"}}},
-                                "then": {"not": {"required": ["options"]}},
-                            },
-                        ],
-                    },
-                },
-                "required": ["resource_data", "modules", "local_files"],
-            },
-            "schema_columns": {
-                "type": "array",
-                "items": {"type": "string"}
-            },
-            "output": {
-                "type": "object",
-                "properties": {
-                    "json_path": {"type": "string"},
-                    "markdown_path": {"type": "string"},
-                    "template": {
-                        "oneOf": [
-                            {"type": "string"},
-                            {
-                                "type": "object",
-                                "properties": {
-                                    "path": {"type": "string"}
-                                },
-                                "required": ["path"]
-                            }
-                        ]
-                    }
-                },
-                "required": ["json_path", "markdown_path"],
-            },
-        },
-        "required": ["bedrock", "input", "output"],
-        }
+        # --- 3. Dynamically construct the schema based on the active provider ---
+        current_schema = deepcopy(CONFIG_SCHEMA_BASE)
 
-        if "bedrock" in config and "output_json" in config["bedrock"]:
-            if isinstance(config["bedrock"]["output_json"], str):
-                try:
-                    config["bedrock"]["output_json"] = json.loads(
-                        config["bedrock"]["output_json"]
-                    )
-                except json.JSONDecodeError as e:
-                    raise ValueError(f"Invalid JSON in output_json: {e}")
+        if active_provider_name == "bedrock":
+            current_schema["properties"]["provider_config"]["properties"]["settings"] = BEDROCK_PROVIDER_SCHEMA
+        else:
+            raise ValueError(f"Unsupported provider: {active_provider_name}")
+
+
+        # Handle output_json conversion before validation
+        if "output_json" in config["provider_config"]["settings"] and isinstance(config["provider_config"]["settings"]["output_json"], str):
+            try:
+                config["provider_config"]["settings"]["output_json"] = json.loads(config["provider_config"]["settings"]["output_json"])
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON in provider_config.settings.output_json: {e}")
 
         try:
-            # First validate the base configuration
-            jsonschema.validate(instance=config, schema=schema)
+            jsonschema.validate(instance=config, schema=current_schema)
             logger.debug("Configuration schema validation passed")
 
-            # Then merge with defaults
             config = merge_defaults(config, default_config)
             logger.debug("Configuration merged with defaults")
 

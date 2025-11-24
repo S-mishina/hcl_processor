@@ -5,23 +5,27 @@ import pytest
 from botocore.exceptions import (ClientError, EndpointConnectionError,
                                ReadTimeoutError)
 
-from hcl_processor.bedrock_client import aws_bedrock
+from hcl_processor.bedrock_client import BedrockProvider
+from hcl_processor.llm_provider import PayloadTooLargeError
 
 
 def build_config():
     return {
-        "bedrock": {
-            "aws_profile": "test-profile",
-            "system_prompt": "Test system prompt",
-            "payload": {
-                "anthropic_version": "v1",
-                "max_tokens": 100,
-                "temperature": 0.5,
-                "top_p": 1.0,
-                "top_k": 40,
-            },
-            "output_json": {},
-            "model_id": "test-model",
+        "provider_config": {
+            "name": "bedrock",
+            "settings": {
+                "aws_profile": "test-profile",
+                "system_prompt": "Test system prompt",
+                "payload": {
+                    "anthropic_version": "v1",
+                    "max_tokens": 100,
+                    "temperature": 0.5,
+                    "top_p": 1.0,
+                    "top_k": 40,
+                },
+                "output_json": {"type": "object", "properties": {"monitors": {"type": "array", "items": {"type": "object"}}}},
+                "model_id": "test-model",
+            }
         },
         "modules": {"enabled": True},
         "output": {
@@ -58,7 +62,7 @@ def build_system_config():
 
 
 @patch("hcl_processor.bedrock_client.boto3.Session")
-def test_aws_bedrock_success(mock_session):
+def test_bedrock_provider_invoke_single_success(mock_session):
     mock_client = MagicMock()
     mock_response = {
         "output": {
@@ -86,54 +90,74 @@ def test_aws_bedrock_success(mock_session):
     mock_client.converse.return_value = mock_response
     mock_session.return_value.client.return_value = mock_client
 
-    # Verify toolConfig is passed correctly
-    result = aws_bedrock(
-        "prompt", "modules_data", build_config(), build_system_config()
+    config = build_config()
+    system_config = build_system_config()
+    provider = BedrockProvider(config, system_config)
+
+    result = provider.invoke_single(
+        "prompt", "modules_data"
     )
     mock_client.converse.assert_called_once()
     call_kwargs = mock_client.converse.call_args.kwargs
     assert "toolConfig" in call_kwargs
-    input_schema = call_kwargs["toolConfig"]["tools"][0]["toolSpec"]["inputSchema"]["json"]
-    assert input_schema["type"] == "object"
-    assert "monitors" in input_schema["properties"]
-    assert input_schema["properties"]["monitors"]["type"] == "array"
-    assert input_schema["properties"]["monitors"]["items"]["properties"] == build_config()["bedrock"]["output_json"].get("items", {}).get("properties", {})
-    expected = json.dumps([{"monitor_name": "Test Monitor", "type": "query alert"}], ensure_ascii=False)
+    # The output_json is passed directly now, not constructed within the test
+    assert call_kwargs["toolConfig"]["tools"][0]["toolSpec"]["inputSchema"]["json"] == config["provider_config"]["settings"]["output_json"]
+
+    expected = json.dumps({"monitors": [{"monitor_name": "Test Monitor", "type": "query alert"}]}, ensure_ascii=False)
     assert result == expected
 
 
 @patch("hcl_processor.bedrock_client.boto3.Session")
 @pytest.mark.parametrize(
-    "exception",
+    "exception_type, exception_message, expected_exception",
     [
-        EndpointConnectionError(endpoint_url="test"),
-        ReadTimeoutError(endpoint_url="test", error="timeout"),
-        ClientError(error_response={}, operation_name="test"),
-        Exception("general"),
+        (EndpointConnectionError, "test", EndpointConnectionError),
+        (ReadTimeoutError, "timeout", ReadTimeoutError),
+        (ClientError, {"Error": {"Code": "Test", "Message": "normal client error"}}, ClientError),
+        (ClientError, {"Error": {"Code": "ValidationException", "Message": "Input token size exceeds limit"}}, PayloadTooLargeError),
+        (Exception, "general", Exception),
     ],
 )
-def test_aws_bedrock_api_exceptions(mock_session, exception):
+def test_bedrock_provider_api_exceptions(mock_session, exception_type, exception_message, expected_exception):
     mock_client = MagicMock()
-    mock_client.converse.side_effect = exception
+
+    if exception_type == ClientError:
+        exception_instance = ClientError(error_response=exception_message, operation_name="test")
+    elif exception_type == EndpointConnectionError:
+        exception_instance = EndpointConnectionError(endpoint_url=exception_message)
+    elif exception_type == ReadTimeoutError:
+        exception_instance = ReadTimeoutError(endpoint_url="test", error=exception_message)
+    else:
+        exception_instance = exception_type(exception_message)
+
+    mock_client.converse.side_effect = exception_instance
     mock_session.return_value.client.return_value = mock_client
 
-    with pytest.raises(type(exception)):
-        aws_bedrock("prompt", "modules_data", build_config(), build_system_config())
+    config = build_config()
+    system_config = build_system_config()
+    provider = BedrockProvider(config, system_config)
+
+    with pytest.raises(expected_exception):
+        provider.invoke_single("prompt", "modules_data")
 
 
 @patch("hcl_processor.bedrock_client.boto3.Session")
-def test_aws_bedrock_attribute_error(mock_session):
+def test_bedrock_provider_attribute_error(mock_session):
     mock_client = MagicMock()
     mock_response = {"output": None}  # will raise AttributeError when accessing message
     mock_client.converse.return_value = mock_response
     mock_session.return_value.client.return_value = mock_client
 
+    config = build_config()
+    system_config = build_system_config()
+    provider = BedrockProvider(config, system_config)
+
     with pytest.raises(AttributeError):
-        aws_bedrock("prompt", "modules_data", build_config(), build_system_config())
+        provider.invoke_single("prompt", "modules_data")
 
 
 @patch("hcl_processor.bedrock_client.boto3.Session")
-def test_aws_bedrock_json_decode_error(mock_session):
+def test_bedrock_provider_json_decode_error(mock_session):
     mock_client = MagicMock()
     mock_response = {
         "output": {
@@ -146,12 +170,16 @@ def test_aws_bedrock_json_decode_error(mock_session):
     mock_client.converse.return_value = mock_response
     mock_session.return_value.client.return_value = mock_client
 
+    config = build_config()
+    system_config = build_system_config()
+    provider = BedrockProvider(config, system_config)
+
     with pytest.raises(json.JSONDecodeError):
-        aws_bedrock("prompt", "modules_data", build_config(), build_system_config())
+        provider.invoke_single("prompt", "modules_data")
 
 
 @patch("hcl_processor.bedrock_client.boto3.Session")
-def test_aws_bedrock_modules_disabled(mock_session):
+def test_bedrock_provider_modules_disabled(mock_session):
     mock_client = MagicMock()
     mock_response = {
         "output": {
@@ -166,31 +194,15 @@ def test_aws_bedrock_modules_disabled(mock_session):
 
     config = build_config()
     config["modules"]["enabled"] = False
+    system_config = build_system_config()
+    provider = BedrockProvider(config, system_config)
 
-    result = aws_bedrock("prompt", "modules_data", config, build_system_config())
+    result = provider.invoke_single("prompt", "modules_data")
     assert result == "response text"
 
 
 @patch("hcl_processor.bedrock_client.boto3.Session")
-def test_aws_bedrock_modules_data_none(mock_session):
-    mock_client = MagicMock()
-    mock_response = {
-        "output": {
-            "message": {
-                "role": "assistant",
-                "content": [{"text": "response text"}]
-            }
-        }
-    }
-    mock_client.converse.return_value = mock_response
-    mock_session.return_value.client.return_value = mock_client
-
-    result = aws_bedrock("prompt", None, build_config(), build_system_config())
-    assert result == "response text"
-
-
-@patch("hcl_processor.bedrock_client.boto3.Session")
-def test_aws_bedrock_defaults_used(mock_session):
+def test_bedrock_provider_modules_data_none(mock_session):
     mock_client = MagicMock()
     mock_response = {
         "output": {
@@ -204,7 +216,31 @@ def test_aws_bedrock_defaults_used(mock_session):
     mock_session.return_value.client.return_value = mock_client
 
     config = build_config()
-    config["bedrock"]["payload"].pop("max_tokens", None)  # force default use
+    system_config = build_system_config()
+    provider = BedrockProvider(config, system_config)
 
-    result = aws_bedrock("prompt", "modules_data", config, build_system_config())
+    result = provider.invoke_single("prompt", None)
+    assert result == "response text"
+
+
+@patch("hcl_processor.bedrock_client.boto3.Session")
+def test_bedrock_provider_defaults_used(mock_session):
+    mock_client = MagicMock()
+    mock_response = {
+        "output": {
+            "message": {
+                "role": "assistant",
+                "content": [{"text": "response text"}]
+            }
+        }
+    }
+    mock_client.converse.return_value = mock_response
+    mock_session.return_value.client.return_value = mock_client
+
+    config = build_config()
+    config["provider_config"]["settings"]["payload"].pop("max_tokens", None)  # force default use
+    system_config = build_system_config()
+    provider = BedrockProvider(config, system_config)
+
+    result = provider.invoke_single("prompt", "modules_data")
     assert result == "response text"
