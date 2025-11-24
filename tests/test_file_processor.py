@@ -1,4 +1,3 @@
-import json
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
@@ -6,7 +5,6 @@ import pytest
 from hcl_processor.file_processor import (get_modules_name, read_local_files,
                                           read_tf_file, run_hcl_file_workflow)
 from hcl_processor.llm_provider import PayloadTooLargeError
-from hcl_processor.provider_factory import create_llm_provider
 
 
 def test_read_tf_file_exists(tmp_path):

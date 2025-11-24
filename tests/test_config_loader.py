@@ -2,8 +2,6 @@ import os
 import tempfile
 import unittest
 import yaml
-from unittest.mock import patch
-import json
 
 from src.hcl_processor.config_loader import load_config, get_default_config
 
