@@ -60,7 +60,7 @@ class TestConfigLoader(unittest.TestCase):
         self.assertEqual(config["provider_config"]["name"], "bedrock")
         self.assertEqual(config["provider_config"]["settings"]["system_prompt"], "test prompt")
         self.assertEqual(config["provider_config"]["settings"]["payload"]["max_tokens"], 100)
-        
+
         # Verify that default values are still applied
         default_config = get_default_config()
         self.assertEqual(config["schema_columns"], default_config["schema_columns"])
@@ -85,7 +85,7 @@ class TestConfigLoader(unittest.TestCase):
         }
         self._write_config(config_data)
 
-        with self.assertRaisesRegex(ValueError, "Unexpected top-level key 'gemini' found"):
+        with self.assertRaisesRegex(ValueError, "Multiple LLM providers specified"):
             load_config(self.config_path)
 
     def test_load_config_output_json_string_conversion(self):

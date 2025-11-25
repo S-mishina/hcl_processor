@@ -41,11 +41,24 @@ def get_system_config() -> dict:
                 "top_k": 0,
             },
         },
+        "default_gemini": {
+            "gcp_region": "us-central1",
+            "payload": {
+                "max_tokens": 4096,
+                "temperature": 0,
+                "top_p": 1,
+                "top_k": 0,
+            },
+        },
         "constants": {
             "bedrock": {
                 "default_model_id": "anthropic.claude-3-5-sonnet-20240620-v1:0",
                 "tool_name": "json_validator",
                 "tool_description": "Validates and formats JSON output",
+                "target_json_key": "monitors"
+            },
+            "gemini": {
+                "default_model_name": "gemini-2.0-flash",
                 "target_json_key": "monitors"
             },
             "file_processing": {
