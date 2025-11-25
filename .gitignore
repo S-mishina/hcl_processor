@@ -7,3 +7,5 @@ config/config.yaml
 dist/*
 poetry.lock
 output/output.md
+terraform/*
+test_config.yaml

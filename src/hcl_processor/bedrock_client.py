@@ -26,6 +26,7 @@ class BedrockProvider(LLMProvider):
         self.provider_settings = config["provider_config"]["settings"] # Store specific provider settings
         self.bedrock_client = self._setup_bedrock_client()
         self._output_schema = self.provider_settings["output_json"] # Extract output_json from provider_settings
+        self._schema_wrapped = False  # Track if array schema was wrapped in object
 
     @property
     def output_schema(self) -> dict:
@@ -96,7 +97,25 @@ class BedrockProvider(LLMProvider):
     def _build_tool_config(self) -> dict:
         """
         Builds the Bedrock-specific toolConfig for structured output.
+        Bedrock Converse API requires inputSchema.json.type to be "object".
+        If user's schema is an array type, wrap it in an object with a "data" property.
         """
+        schema = self.output_schema
+        # Bedrock Converse API requires inputSchema.json.type to be "object"
+        if schema.get("type") == "array":
+            wrapped_schema = {
+                "type": "object",
+                "properties": {
+                    "data": schema
+                },
+                "required": ["data"]
+            }
+            self._schema_wrapped = True
+            logger.debug("Array schema detected, wrapping in object for Bedrock API compatibility")
+        else:
+            wrapped_schema = schema
+            self._schema_wrapped = False
+
         tool_config = {
             "tools": [
                 {
@@ -104,7 +123,7 @@ class BedrockProvider(LLMProvider):
                         "name": self.system_config["constants"]["bedrock"]["tool_name"],
                         "description": "Validates and formats JSON output",
                         "inputSchema": {
-                            "json": self.output_schema # Use internal schema
+                            "json": wrapped_schema
                         }
                     }
                 }
@@ -175,8 +194,12 @@ class BedrockProvider(LLMProvider):
                 tool_use = content["toolUse"]
                 logger.debug(f"Tool use response: {json.dumps(tool_use, indent=2, ensure_ascii=False)}")
                 if tool_use["name"] == self.system_config["constants"]["bedrock"]["tool_name"]:
-                    # Return the raw JSON string from the tool's input
-                    return json.dumps(tool_use["input"], ensure_ascii=False)
+                    result = tool_use["input"]
+                    # Unwrap if schema was wrapped for Bedrock API compatibility
+                    if self._schema_wrapped and isinstance(result, dict) and "data" in result:
+                        result = result["data"]
+                        logger.debug("Unwrapping array data from object wrapper")
+                    return json.dumps(result, ensure_ascii=False)
 
             if "text" in content:
                 # Fallback to plain text if toolUse is not present
