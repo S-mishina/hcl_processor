@@ -85,7 +85,7 @@ class TestConfigLoader(unittest.TestCase):
         }
         self._write_config(config_data)
 
-        with self.assertRaisesRegex(ValueError, "Unexpected top-level key 'gemini' found"):
+        with self.assertRaisesRegex(ValueError, "Multiple LLM providers specified"):
             load_config(self.config_path)
 
     def test_load_config_output_json_string_conversion(self):

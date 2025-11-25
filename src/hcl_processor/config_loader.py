@@ -38,7 +38,35 @@ BEDROCK_PROVIDER_SCHEMA = {
     "additionalProperties": False
 }
 
-PROVIDER_KEYS = ["bedrock"] # This will be extended for other providers later
+PROVIDER_KEYS = ["bedrock", "gemini"]
+
+GEMINI_PROVIDER_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "system_prompt": {"type": "string"},
+        "payload": {
+            "type": "object",
+            "properties": {
+                "max_tokens": {"type": "integer"},
+                "temperature": {"type": "number"},
+                "top_p": {"type": "number"},
+                "top_k": {"type": "integer"},
+            },
+            "required": ["max_tokens", "temperature", "top_p", "top_k"],
+        },
+        "read_timeout": {"type": "integer"},
+        "connect_timeout": {"type": "integer"},
+        "retries": {"type": "object"},
+        "output_json": {"type": "object"},
+        "gcp_project": {"type": "string"},
+        "gcp_region": {"type": "string"},
+        "gcp_credentials_file": {"type": "string"},
+        "model_name": {"type": "string"},
+    },
+    "required": ["system_prompt", "payload", "output_json"],
+    "additionalProperties": False
+}
+
 
 CONFIG_SCHEMA_BASE = {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -242,6 +270,8 @@ def load_config(config_path: str) -> dict:
 
         if active_provider_name == "bedrock":
             current_schema["properties"]["provider_config"]["properties"]["settings"] = BEDROCK_PROVIDER_SCHEMA
+        elif active_provider_name == "gemini":
+            current_schema["properties"]["provider_config"]["properties"]["settings"] = GEMINI_PROVIDER_SCHEMA
         else:
             raise ValueError(f"Unsupported provider: {active_provider_name}")
 
