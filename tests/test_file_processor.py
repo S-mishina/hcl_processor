@@ -351,7 +351,7 @@ def test_failback_extend_error_handling(mock_output_md, mock_get_module, mock_va
     mock_create_llm_provider.return_value = mock_provider_instance
 
     # Return non-iterable to trigger extend error in flatten logic
-    mock_validate.return_value = "not_a_list" 
+    mock_validate.return_value = "not_a_list"
 
     # Should handle extend error gracefully and not raise an unhandled exception
     run_hcl_file_workflow(str(file_path), config, system_config)

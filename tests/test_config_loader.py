@@ -60,7 +60,7 @@ class TestConfigLoader(unittest.TestCase):
         self.assertEqual(config["provider_config"]["name"], "bedrock")
         self.assertEqual(config["provider_config"]["settings"]["system_prompt"], "test prompt")
         self.assertEqual(config["provider_config"]["settings"]["payload"]["max_tokens"], 100)
-        
+
         # Verify that default values are still applied
         default_config = get_default_config()
         self.assertEqual(config["schema_columns"], default_config["schema_columns"])
