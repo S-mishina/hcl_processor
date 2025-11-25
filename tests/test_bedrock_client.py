@@ -244,3 +244,95 @@ def test_bedrock_provider_defaults_used(mock_session):
 
     result = provider.invoke_single("prompt", "modules_data")
     assert result == "response text"
+
+
+@patch("hcl_processor.bedrock_client.boto3.Session")
+def test_bedrock_provider_array_schema_wrapped_in_object(mock_session):
+    """Test that array schemas are wrapped in object for Bedrock API compatibility."""
+    mock_client = MagicMock()
+    mock_response = {
+        "output": {
+            "message": {
+                "role": "assistant",
+                "content": [
+                    {
+                        "toolUse": {
+                            "toolUseId": "tooluse_test",
+                            "name": "json_validator",
+                            "input": {
+                                "data": [
+                                    {"monitor_name": "Test Monitor 1"},
+                                    {"monitor_name": "Test Monitor 2"}
+                                ]
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    }
+    mock_client.converse.return_value = mock_response
+    mock_session.return_value.client.return_value = mock_client
+
+    config = build_config()
+    # Set array schema
+    config["provider_config"]["settings"]["output_json"] = {
+        "type": "array",
+        "items": {"type": "object", "properties": {"monitor_name": {"type": "string"}}}
+    }
+    system_config = build_system_config()
+    provider = BedrockProvider(config, system_config)
+
+    result = provider.invoke_single("prompt", "modules_data")
+
+    # Verify schema was wrapped in object for API call
+    call_kwargs = mock_client.converse.call_args.kwargs
+    sent_schema = call_kwargs["toolConfig"]["tools"][0]["toolSpec"]["inputSchema"]["json"]
+    assert sent_schema["type"] == "object"
+    assert "data" in sent_schema["properties"]
+    assert sent_schema["properties"]["data"]["type"] == "array"
+
+    # Verify response was unwrapped back to array
+    expected = json.dumps([{"monitor_name": "Test Monitor 1"}, {"monitor_name": "Test Monitor 2"}], ensure_ascii=False)
+    assert result == expected
+
+
+@patch("hcl_processor.bedrock_client.boto3.Session")
+def test_bedrock_provider_object_schema_not_wrapped(mock_session):
+    """Test that object schemas are not wrapped."""
+    mock_client = MagicMock()
+    mock_response = {
+        "output": {
+            "message": {
+                "role": "assistant",
+                "content": [
+                    {
+                        "toolUse": {
+                            "toolUseId": "tooluse_test",
+                            "name": "json_validator",
+                            "input": {"monitors": [{"name": "test"}]}
+                        }
+                    }
+                ]
+            }
+        }
+    }
+    mock_client.converse.return_value = mock_response
+    mock_session.return_value.client.return_value = mock_client
+
+    config = build_config()
+    # Object schema (default in build_config)
+    system_config = build_system_config()
+    provider = BedrockProvider(config, system_config)
+
+    result = provider.invoke_single("prompt", "modules_data")
+
+    # Verify schema was NOT wrapped
+    call_kwargs = mock_client.converse.call_args.kwargs
+    sent_schema = call_kwargs["toolConfig"]["tools"][0]["toolSpec"]["inputSchema"]["json"]
+    assert sent_schema == config["provider_config"]["settings"]["output_json"]
+    assert "data" not in sent_schema.get("properties", {})
+
+    # Verify response is returned as-is
+    expected = json.dumps({"monitors": [{"name": "test"}]}, ensure_ascii=False)
+    assert result == expected
