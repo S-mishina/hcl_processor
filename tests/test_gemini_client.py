@@ -313,6 +313,6 @@ def test_gemini_provider_with_credentials_file(mock_client_class):
     system_config = build_system_config()
 
     with patch.dict("os.environ", {}, clear=False):
-        provider = GeminiProvider(config, system_config)
+        GeminiProvider(config, system_config)
         import os
         assert os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") == "/path/to/creds.json"
