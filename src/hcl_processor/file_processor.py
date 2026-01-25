@@ -3,6 +3,7 @@ import logging
 import os
 
 import hcl2
+import jsonschema
 
 from .llm_provider import LLMProvider, PayloadTooLargeError
 from .provider_factory import create_llm_provider # Import create_llm_provider from main.py
@@ -164,8 +165,8 @@ def run_hcl_file_workflow(file_path: str, config: dict, system_config: dict) -> 
             # 3. Output processing
             _write_output_files(validated_output, file_path, config, system_config)
             logger.info(f"Successfully processed file: {file_path}")
-        except (PayloadTooLargeError, json.decoder.JSONDecodeError) as e: # Catch PayloadTooLargeError
-            logger.error(f"Error (potentially payload size or malformed JSON) - retrying in chunks: {e}")
+        except (PayloadTooLargeError, json.decoder.JSONDecodeError, jsonschema.ValidationError) as e:
+            logger.error(f"Error (payload size, malformed JSON, or schema validation) - retrying in chunks: {e}")
 
             if config["input"]["failback"]["enabled"]:
                 # 4. Execute failback strategy
