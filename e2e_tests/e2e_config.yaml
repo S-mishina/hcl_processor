@@ -1,0 +1,116 @@
+bedrock:
+  aws_region: "ap-northeast-1"
+  system_prompt: |
+    You are a Terraform code analyzer specializing in Datadog monitor configurations.
+
+    Your task is to analyze the provided Terraform code and locals files to generate a JSON document that describes ALL monitor configurations defined in the locals.
+
+    Important rules for analysis:
+    1. Parse the locals.tf files for each environment (dev, stg, prd) to understand the configuration values
+    2. Identify ALL monitors in the locals configuration (e.g., error_rate, latency, etc.)
+    3. For EACH monitor found in locals:
+       - Extract the monitor name without any environment prefix
+       - Use the exact query from the configuration
+       - Extract the message content as is
+       - For thresholds, combine critical and warning values in the format "critical: X, warning: Y"
+       - Include notification channels and tags from locals if available
+       - Set evaluation period based on the timeframe in the query (e.g., "last_5m" = "5 minutes")
+       - Create a separate JSON object for each monitor
+
+    Output format:
+    - Generate a JSON array where each object represents a monitor
+    - Each object must follow the schema provided in output_json
+    - All values must be in Japanese where appropriate
+    - Use "<UNKNOWN>" for any values that cannot be determined from the configuration
+
+    Remember:
+    - Process ALL monitors defined in the Terraform code
+    - Each monitor should be a separate object in the output JSON array
+    - Analyze the relationship between locals and monitor definitions
+    - Extract and combine values from both the monitor definition and corresponding locals
+    - Ensure all required fields are present in each monitor object
+
+  output_json: |
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "array",
+      "title": "Datadog Alert Design Schema",
+      "description": "Schema for Datadog alert design document",
+      "items": {
+        "type": "object",
+        "properties": {
+          "monitor_name": {"type": "string", "description": "Monitor name"},
+          "type": {"type": "string", "description": "Monitor type (e.g., query alert)"},
+          "query": {"type": "string", "description": "Datadog monitor query"},
+          "evaluation_period": {"type": "string", "description": "Evaluation period (e.g., 5 minutes)"},
+          "notification": {"type": "string", "description": "Notification destination (e.g., Slack channel)"},
+          "tags": {"type": "string", "description": "Tags associated with the monitor"},
+          "alert_message": {"type": "string", "description": "Alert message when triggered"},
+          "note": {"type": "string", "description": "Notes about the monitor"},
+          "dev_threshold": {"type": "string", "description": "Development environment threshold"},
+          "stg_threshold": {"type": "string", "description": "Staging environment threshold"},
+          "prd_threshold": {"type": "string", "description": "Production environment threshold"}
+        },
+        "required": [
+          "monitor_name", "type", "query", "evaluation_period", "notification", "tags",
+          "alert_message", "note", "dev_threshold", "stg_threshold", "prd_threshold"
+        ]
+      }
+    }
+
+  payload:
+    anthropic_version: "bedrock-2023-05-31"
+    max_tokens: 4096
+    temperature: 0
+    top_p: 1
+    top_k: 0
+
+  read_timeout: 120
+  connect_timeout: 30
+
+  retries:
+    max_attempts: 5
+    mode: standard
+
+schema_columns:
+  - monitor_name
+  - type
+  - query
+  - evaluation_period
+  - notification
+  - tags
+  - alert_message
+  - note
+  - dev_threshold
+  - stg_threshold
+  - prd_threshold
+
+output:
+  json_path: e2e_tests/output/output.json
+  markdown_path: e2e_tests/output/output.md
+  markdown_template: |
+    ##### {{ title }}
+
+    | {% for col in columns %}{{ col }} | {% endfor %}
+    |{% for col in columns %}:---|{% endfor %}
+    {% for row in data %}| {% for col in columns %}{{ row[col] }} | {% endfor %}
+    {% endfor %}
+
+input:
+  resource_data:
+    folder: e2e_tests/test_data/monitor
+
+  local_files:
+    - dev: e2e_tests/test_data/dev/locals.tf
+    - stg: e2e_tests/test_data/stg/locals.tf
+    - prd: e2e_tests/test_data/prd/locals.tf
+
+  modules:
+    path: e2e_tests/test_data/modules/monitor/main.tf
+    enabled: true
+
+  failback:
+    enabled: true
+    type: modules
+    options:
+      target: monitors
