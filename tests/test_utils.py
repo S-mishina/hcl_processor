@@ -16,6 +16,7 @@ class TestUtils(unittest.TestCase):
     def tearDown(self):
         """Clean up after tests"""
         import shutil
+
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
     def test_ensure_directory_exists_with_existing_directory(self):
@@ -58,7 +59,7 @@ class TestUtils(unittest.TestCase):
         expected_dir = os.path.join(self.test_dir, "level1", "level2", "level3")
         self.assertTrue(os.path.exists(expected_dir))
 
-    @patch('src.hcl_processor.utils.os.makedirs')
+    @patch("src.hcl_processor.utils.os.makedirs")
     def test_ensure_directory_exists_handles_permission_error(self, mock_makedirs):
         """Test ensure_directory_exists handles permission errors gracefully"""
         # Mock os.makedirs to raise PermissionError
@@ -70,7 +71,7 @@ class TestUtils(unittest.TestCase):
         with self.assertRaises(PermissionError):
             ensure_directory_exists(test_file)
 
-    @patch('src.hcl_processor.utils.os.makedirs')
+    @patch("src.hcl_processor.utils.os.makedirs")
     def test_ensure_directory_exists_handles_other_os_errors(self, mock_makedirs):
         """Test ensure_directory_exists handles other OS errors"""
         # Mock os.makedirs to raise OSError
@@ -110,5 +111,5 @@ class TestUtils(unittest.TestCase):
             pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

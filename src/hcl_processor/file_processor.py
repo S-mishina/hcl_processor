@@ -6,15 +6,24 @@ import hcl2
 import jsonschema
 
 from .llm_provider import LLMProvider, PayloadTooLargeError
-from .provider_factory import create_llm_provider # Import create_llm_provider from main.py
-from .output_writer import output_md, validate_output_json
-from .utils import ensure_directory_exists, measure_time
 from .logger_config import get_logger, log_exception
+from .output_writer import output_md, validate_output_json
+from .provider_factory import (  # Import create_llm_provider from main.py
+    create_llm_provider,
+)
+from .utils import ensure_directory_exists, measure_time
 
 logger = get_logger("file_processor")
 
 
-def _execute_failback_strategy(resource_dict: dict, locals_str: str, modules_raw: str, config: dict, system_config: dict, provider: LLMProvider) -> list:
+def _execute_failback_strategy(
+    resource_dict: dict,
+    locals_str: str,
+    modules_raw: str,
+    config: dict,
+    system_config: dict,
+    provider: LLMProvider,
+) -> list:
     """
     Execute failback strategy with chunk processing (internal function)
     This implements the core failback philosophy: continue processing even when individual chunks fail (pass strategy)
@@ -22,7 +31,9 @@ def _execute_failback_strategy(resource_dict: dict, locals_str: str, modules_raw
     Returns:
         list: Flattened list of processed results (partial success included)
     """
-    search_resource = system_config["constants"]["file_processing"]["default_search_resource"]
+    search_resource = system_config["constants"]["file_processing"][
+        "default_search_resource"
+    ]
     module_name = get_modules_name(resource_dict, search_resource)
 
     # Get resources for failback processing
@@ -43,9 +54,7 @@ def _execute_failback_strategy(resource_dict: dict, locals_str: str, modules_raw
         for i, resource in enumerate(resources):
             try:
                 combined_str = f"{locals_str}\n{resource}\n"
-                partial_output = provider.invoke_single(
-                    combined_str, modules_raw
-                )
+                partial_output = provider.invoke_single(combined_str, modules_raw)
                 validated_partial = validate_output_json(
                     partial_output, provider.output_schema
                 )
@@ -54,27 +63,37 @@ def _execute_failback_strategy(resource_dict: dict, locals_str: str, modules_raw
                 logger.debug(f"Chunk {i+1}/{total_chunks} processed successfully")
             except Exception as e:
                 # Failback core philosophy: pass processing for continuity
-                log_exception(logger, e, f"Error processing resource chunk {i+1}/{total_chunks}")
+                log_exception(
+                    logger, e, f"Error processing resource chunk {i+1}/{total_chunks}"
+                )
                 logger.warning(f"Skipping chunk {i+1} and continuing with next chunk")
                 pass  # Individual chunk failure should not stop overall processing
     except Exception as e:
         log_exception(logger, e, "Error processing resource chunk")
         pass  # Continue even if chunk processing fails
 
-    logger.info(f"Failback completed: {successful_chunks}/{total_chunks} chunks processed successfully")
+    logger.info(
+        f"Failback completed: {successful_chunks}/{total_chunks} chunks processed successfully"
+    )
 
     # Flatten results (with pass strategy for integration errors)
     flattened_list = []
     for json_obj in hcl_output:
-        if json_obj: # Only extend if json_obj is not empty
+        if json_obj:  # Only extend if json_obj is not empty
             try:
                 flattened_list.extend(json_obj)
             except Exception as e:
-                log_exception(logger, e, f"Error extending flattened list with: {json_obj}")
+                log_exception(
+                    logger, e, f"Error extending flattened list with: {json_obj}"
+                )
                 pass  # Continue processing even if individual result integration fails
 
     return flattened_list
-def _write_output_files(output_data: dict | list, file_path: str, config: dict, system_config: dict) -> None:
+
+
+def _write_output_files(
+    output_data: dict | list, file_path: str, config: dict, system_config: dict
+) -> None:
     """
     Write JSON and Markdown output files (internal function)
 
@@ -89,7 +108,9 @@ def _write_output_files(output_data: dict | list, file_path: str, config: dict, 
         # TODO: Need to consider creating a temporary file.
         with open(config["output"]["json_path"], "w", encoding="utf-8") as f:
             json.dump(output_data, f, ensure_ascii=False, indent=4)
-            logger.info(f"Successfully wrote JSON output to {config['output']['json_path']}")
+            logger.info(
+                f"Successfully wrote JSON output to {config['output']['json_path']}"
+            )
     except Exception as e:
         log_exception(logger, e, "Error writing JSON output")
         raise
@@ -99,7 +120,9 @@ def _write_output_files(output_data: dict | list, file_path: str, config: dict, 
     output_md(os.path.basename(file_path).replace(tf_extension, ""), config)
 
 
-def _load_and_prepare_hcl_data(file_path: str, config: dict) -> tuple[dict, str, str, str]:
+def _load_and_prepare_hcl_data(
+    file_path: str, config: dict
+) -> tuple[dict, str, str, str]:
     """
     Load and prepare HCL data from the specified file and local files.
 
@@ -146,7 +169,9 @@ def run_hcl_file_workflow(file_path: str, config: dict, system_config: dict) -> 
         ValueError: If the hcl file cannot be parsed.
     """
     with measure_time(f"HCL file processing: {os.path.basename(file_path)}", logger):
-        resource_dict, combined_str, modules_raw, locals_str = _load_and_prepare_hcl_data(file_path, config)
+        resource_dict, combined_str, modules_raw, locals_str = (
+            _load_and_prepare_hcl_data(file_path, config)
+        )
 
         # Obtain provider instance
         provider = create_llm_provider(config, system_config)
@@ -158,19 +183,36 @@ def run_hcl_file_workflow(file_path: str, config: dict, system_config: dict) -> 
 
             # Check if result is empty or insufficient, which indicates need for failback
             if isinstance(validated_output, list) and len(validated_output) == 0:
-                logger.warning("API returned empty result, triggering failback strategy...")
+                logger.warning(
+                    "API returned empty result, triggering failback strategy..."
+                )
                 # Use PayloadTooLargeError for consistent trigger
-                raise PayloadTooLargeError("Empty result or insufficient response, treating as payload issue for failback.")
+                raise PayloadTooLargeError(
+                    "Empty result or insufficient response, treating as payload issue for failback."
+                )
 
             # 3. Output processing
             _write_output_files(validated_output, file_path, config, system_config)
             logger.info(f"Successfully processed file: {file_path}")
-        except (PayloadTooLargeError, json.decoder.JSONDecodeError, jsonschema.ValidationError) as e:
-            logger.error(f"Error (payload size, malformed JSON, or schema validation) - retrying in chunks: {e}")
+        except (
+            PayloadTooLargeError,
+            json.decoder.JSONDecodeError,
+            jsonschema.ValidationError,
+        ) as e:
+            logger.error(
+                f"Error (payload size, malformed JSON, or schema validation) - retrying in chunks: {e}"
+            )
 
             if config["input"]["failback"]["enabled"]:
                 # 4. Execute failback strategy
-                flattened_list = _execute_failback_strategy(resource_dict, locals_str, modules_raw, config, system_config, provider) # Pass provider
+                flattened_list = _execute_failback_strategy(
+                    resource_dict,
+                    locals_str,
+                    modules_raw,
+                    config,
+                    system_config,
+                    provider,
+                )  # Pass provider
                 _write_output_files(flattened_list, file_path, config, system_config)
             else:
                 logger.error("Failback is not enabled, skipping chunk processing.")
@@ -192,7 +234,9 @@ def read_tf_file(file_path: str) -> tuple[str, str]:
         FileNotFoundError: If the file does not exist.
     """
     if os.path.exists(file_path):
-        with measure_time(f"Reading Terraform file: {os.path.basename(file_path)}", logger):
+        with measure_time(
+            f"Reading Terraform file: {os.path.basename(file_path)}", logger
+        ):
             with open(file_path, "r") as f:
                 content = f.read()
                 file_size_kb = len(content) / 1024
@@ -226,7 +270,9 @@ def read_local_files(local_files: list) -> str:
                             content = f.read()
                             file_size_kb = len(content) / 1024
                             total_size_kb += file_size_kb
-                            logger.debug(f"Local file {os.path.basename(path)}: {file_size_kb:.2f} KB")
+                            logger.debug(
+                                f"Local file {os.path.basename(path)}: {file_size_kb:.2f} KB"
+                            )
                             result.append(f"{env}\n---\n{hcl2.loads(content)}\n")
                     except Exception as e:
                         log_exception(logger, e, f"Error reading local file {path}")

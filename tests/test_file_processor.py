@@ -2,8 +2,12 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-from hcl_processor.file_processor import (get_modules_name, read_local_files,
-                                          read_tf_file, run_hcl_file_workflow)
+from hcl_processor.file_processor import (
+    get_modules_name,
+    read_local_files,
+    read_tf_file,
+    run_hcl_file_workflow,
+)
 from hcl_processor.llm_provider import PayloadTooLargeError
 
 
@@ -58,7 +62,9 @@ def test_get_modules_name_not_found():
 
 @patch("hcl_processor.file_processor.open", new_callable=mock_open)
 @patch("hcl_processor.file_processor.os.makedirs")
-@patch("hcl_processor.file_processor.create_llm_provider") # Patch the actual function, not its import
+@patch(
+    "hcl_processor.file_processor.create_llm_provider"
+)  # Patch the actual function, not its import
 def test_run_hcl_file_workflow_success(
     mock_create_llm_provider, mock_makedirs, mock_open_func, tmp_path
 ):
@@ -75,13 +81,7 @@ def test_run_hcl_file_workflow_success(
         "output": {"json_path": str(tmp_path / "out.json")},
         "bedrock": {"output_json": {}},
     }
-    system_config = {
-        "constants": {
-            "file_processing": {
-                "terraform_extension": ".tf"
-            }
-        }
-    }
+    system_config = {"constants": {"file_processing": {"terraform_extension": ".tf"}}}
 
     mock_provider_instance = MagicMock()
     mock_provider_instance.invoke_single.return_value = '{"key": "value"}'
@@ -147,7 +147,7 @@ def test_run_hcl_file_workflow_failback(
     mock_read_local,
     mock_read_tf,
     mock_validate,
-    mock_create_llm_provider, # Updated mock name
+    mock_create_llm_provider,  # Updated mock name
     tmp_path,
 ):
     file_path = tmp_path / "test.tf"
@@ -169,7 +169,7 @@ def test_run_hcl_file_workflow_failback(
         "constants": {
             "file_processing": {
                 "terraform_extension": ".tf",
-                "default_search_resource": "target"
+                "default_search_resource": "target",
             }
         }
     }
@@ -179,7 +179,7 @@ def test_run_hcl_file_workflow_failback(
     mock_provider_instance.invoke_single.side_effect = [
         PayloadTooLargeError("main call failed"),
         '{"result": "success1"}',
-        '{"result": "success2"}' # If there are multiple resource chunks
+        '{"result": "success2"}',  # If there are multiple resource chunks
     ]
     mock_create_llm_provider.return_value = mock_provider_instance
 
@@ -190,12 +190,19 @@ def test_run_hcl_file_workflow_failback(
         assert mock_provider_instance.invoke_single.call_count > 1
 
 
-@patch("hcl_processor.file_processor.create_llm_provider") # Patch the actual function
+@patch("hcl_processor.file_processor.create_llm_provider")  # Patch the actual function
 @patch("hcl_processor.file_processor.hcl2.loads")
 @patch("hcl_processor.file_processor.validate_output_json")
 @patch("hcl_processor.file_processor.get_modules_name")
 @patch("hcl_processor.file_processor.output_md")
-def test_failback_resource_type_branch(mock_output_md, mock_get_module, mock_validate, mock_hcl2, mock_create_llm_provider, tmp_path):
+def test_failback_resource_type_branch(
+    mock_output_md,
+    mock_get_module,
+    mock_validate,
+    mock_hcl2,
+    mock_create_llm_provider,
+    tmp_path,
+):
     """Test resource type branch in failback processing (lines 68-70)"""
     file_path = tmp_path / "test.tf"
     file_path.write_text("content")
@@ -217,7 +224,7 @@ def test_failback_resource_type_branch(mock_output_md, mock_get_module, mock_val
         "constants": {
             "file_processing": {
                 "terraform_extension": ".tf",
-                "default_search_resource": "monitors"
+                "default_search_resource": "monitors",
             }
         }
     }
@@ -225,7 +232,7 @@ def test_failback_resource_type_branch(mock_output_md, mock_get_module, mock_val
     # Mock resource structure for resource type failback
     mock_hcl2.return_value = {
         "resource": [{"res1": {}}, {"res2": {}}],
-        "module": [{"test_module": {"monitors": [{}]}}]
+        "module": [{"test_module": {"monitors": [{}]}}],
     }
     mock_get_module.return_value = "test_module"
 
@@ -234,26 +241,30 @@ def test_failback_resource_type_branch(mock_output_md, mock_get_module, mock_val
     mock_provider_instance.invoke_single.side_effect = [
         PayloadTooLargeError("main call failed"),
         '{"result": "success1"}',
-        '{"result": "success2"}'
+        '{"result": "success2"}',
     ]
     mock_create_llm_provider.return_value = mock_provider_instance
 
-    mock_validate.side_effect = [
-        [{"result": "success1"}],
-        [{"result": "success2"}]
-    ]
+    mock_validate.side_effect = [[{"result": "success1"}], [{"result": "success2"}]]
 
     run_hcl_file_workflow(str(file_path), config, system_config)
     mock_output_md.assert_called()
     assert mock_provider_instance.invoke_single.call_count > 1
 
 
-@patch("hcl_processor.file_processor.create_llm_provider") # Patch the actual function
+@patch("hcl_processor.file_processor.create_llm_provider")  # Patch the actual function
 @patch("hcl_processor.file_processor.hcl2.loads")
 @patch("hcl_processor.file_processor.validate_output_json")
 @patch("hcl_processor.file_processor.get_modules_name")
 @patch("hcl_processor.file_processor.output_md")
-def test_failback_chunk_error_pass_strategy(mock_output_md, mock_get_module, mock_validate, mock_hcl2, mock_create_llm_provider, tmp_path):
+def test_failback_chunk_error_pass_strategy(
+    mock_output_md,
+    mock_get_module,
+    mock_validate,
+    mock_hcl2,
+    mock_create_llm_provider,
+    tmp_path,
+):
     """Test individual chunk error handling with pass strategy (lines 84-85)"""
     file_path = tmp_path / "test.tf"
     file_path.write_text("content")
@@ -275,13 +286,19 @@ def test_failback_chunk_error_pass_strategy(mock_output_md, mock_get_module, moc
         "constants": {
             "file_processing": {
                 "terraform_extension": ".tf",
-                "default_search_resource": "monitors"
+                "default_search_resource": "monitors",
             }
         }
     }
 
     mock_hcl2.return_value = {
-        "module": [{"test_module": {"monitors": [{"chunk1": {}}, {"chunk2": {}}, {"chunk3": {}}]}}]
+        "module": [
+            {
+                "test_module": {
+                    "monitors": [{"chunk1": {}}, {"chunk2": {}}, {"chunk3": {}}]
+                }
+            }
+        ]
     }
     mock_get_module.return_value = "test_module"
 
@@ -290,28 +307,37 @@ def test_failback_chunk_error_pass_strategy(mock_output_md, mock_get_module, moc
     mock_provider_instance.invoke_single.side_effect = [
         PayloadTooLargeError("main call failed"),
         '{"result": "chunk1_success"}',  # Chunk 1 succeeds
-        Exception("Chunk 2 error"),     # Chunk 2 fails (tests pass strategy)
-        '{"result": "chunk3_success"}'   # Chunk 3 succeeds
+        Exception("Chunk 2 error"),  # Chunk 2 fails (tests pass strategy)
+        '{"result": "chunk3_success"}',  # Chunk 3 succeeds
     ]
     mock_create_llm_provider.return_value = mock_provider_instance
 
     mock_validate.side_effect = [
         [{"result": "chunk1_success"}],
-        [{"result": "chunk3_success"}]
+        [{"result": "chunk3_success"}],
     ]
 
     # Should not raise exception due to pass strategy
     run_hcl_file_workflow(str(file_path), config, system_config)
     mock_output_md.assert_called()
-    assert mock_provider_instance.invoke_single.call_count > 1 # Main call + at least 2 successful chunks
+    assert (
+        mock_provider_instance.invoke_single.call_count > 1
+    )  # Main call + at least 2 successful chunks
 
 
-@patch("hcl_processor.file_processor.create_llm_provider") # Patch the actual function
+@patch("hcl_processor.file_processor.create_llm_provider")  # Patch the actual function
 @patch("hcl_processor.file_processor.hcl2.loads")
 @patch("hcl_processor.file_processor.validate_output_json")
 @patch("hcl_processor.file_processor.get_modules_name")
 @patch("hcl_processor.file_processor.output_md")
-def test_failback_extend_error_handling(mock_output_md, mock_get_module, mock_validate, mock_hcl2, mock_create_llm_provider, tmp_path):
+def test_failback_extend_error_handling(
+    mock_output_md,
+    mock_get_module,
+    mock_validate,
+    mock_hcl2,
+    mock_create_llm_provider,
+    tmp_path,
+):
     """Test error in flattened list extend operation (lines 88-91)"""
     file_path = tmp_path / "test.tf"
     file_path.write_text("content")
@@ -333,7 +359,7 @@ def test_failback_extend_error_handling(mock_output_md, mock_get_module, mock_va
         "constants": {
             "file_processing": {
                 "terraform_extension": ".tf",
-                "default_search_resource": "monitors"
+                "default_search_resource": "monitors",
             }
         }
     }
@@ -346,12 +372,12 @@ def test_failback_extend_error_handling(mock_output_md, mock_get_module, mock_va
     mock_provider_instance = MagicMock()
     mock_provider_instance.invoke_single.side_effect = [
         PayloadTooLargeError("main call failed"),
-        '{"result": "success"}'
+        '{"result": "success"}',
     ]
     mock_create_llm_provider.return_value = mock_provider_instance
 
     # Return non-iterable to trigger extend error in flatten logic
-    mock_validate.return_value = "not_a_list" 
+    mock_validate.return_value = "not_a_list"
 
     # Should handle extend error gracefully and not raise an unhandled exception
     run_hcl_file_workflow(str(file_path), config, system_config)
@@ -359,10 +385,12 @@ def test_failback_extend_error_handling(mock_output_md, mock_get_module, mock_va
     assert mock_provider_instance.invoke_single.call_count > 1
 
 
-@patch("hcl_processor.file_processor.create_llm_provider") # Patch the actual function
+@patch("hcl_processor.file_processor.create_llm_provider")  # Patch the actual function
 @patch("hcl_processor.file_processor.hcl2.loads")
 @patch("hcl_processor.file_processor.logger")
-def test_failback_disabled_debug_mode(mock_logger, mock_hcl2, mock_create_llm_provider, tmp_path):
+def test_failback_disabled_debug_mode(
+    mock_logger, mock_hcl2, mock_create_llm_provider, tmp_path
+):
     """Test failback disabled with debug mode (lines 101-105)"""
     file_path = tmp_path / "test.tf"
     file_path.write_text("content")
@@ -376,13 +404,7 @@ def test_failback_disabled_debug_mode(mock_logger, mock_hcl2, mock_create_llm_pr
         "output": {"json_path": str(tmp_path / "out.json")},
         "bedrock": {"output_json": {}},
     }
-    system_config = {
-        "constants": {
-            "file_processing": {
-                "terraform_extension": ".tf"
-            }
-        }
-    }
+    system_config = {"constants": {"file_processing": {"terraform_extension": ".tf"}}}
 
     mock_hcl2.return_value = {"resource": []}
     mock_provider_instance = MagicMock()
@@ -391,16 +413,18 @@ def test_failback_disabled_debug_mode(mock_logger, mock_hcl2, mock_create_llm_pr
     mock_logger.isEnabledFor.return_value = True  # Debug mode enabled
 
     # Should raise exception in debug mode
-    with pytest.raises(PayloadTooLargeError): # Expect PayloadTooLargeError now
+    with pytest.raises(PayloadTooLargeError):  # Expect PayloadTooLargeError now
         run_hcl_file_workflow(str(file_path), config, system_config)
 
     mock_provider_instance.invoke_single.assert_called_once()
 
 
-@patch("hcl_processor.file_processor.create_llm_provider") # Patch the actual function
+@patch("hcl_processor.file_processor.create_llm_provider")  # Patch the actual function
 @patch("hcl_processor.file_processor.hcl2.loads")
 @patch("hcl_processor.file_processor.logger")
-def test_failback_disabled_non_debug_mode(mock_logger, mock_hcl2, mock_create_llm_provider, tmp_path):
+def test_failback_disabled_non_debug_mode(
+    mock_logger, mock_hcl2, mock_create_llm_provider, tmp_path
+):
     """Test failback disabled without debug mode (lines 101-105)"""
     file_path = tmp_path / "test.tf"
     file_path.write_text("content")
@@ -414,13 +438,7 @@ def test_failback_disabled_non_debug_mode(mock_logger, mock_hcl2, mock_create_ll
         "output": {"json_path": str(tmp_path / "out.json")},
         "bedrock": {"output_json": {}},
     }
-    system_config = {
-        "constants": {
-            "file_processing": {
-                "terraform_extension": ".tf"
-            }
-        }
-    }
+    system_config = {"constants": {"file_processing": {"terraform_extension": ".tf"}}}
 
     mock_hcl2.return_value = {"resource": []}
     mock_provider_instance = MagicMock()
@@ -434,7 +452,7 @@ def test_failback_disabled_non_debug_mode(mock_logger, mock_hcl2, mock_create_ll
     mock_provider_instance.invoke_single.assert_called_once()
 
 
-@patch("hcl_processor.file_processor.create_llm_provider") # Patch the actual function
+@patch("hcl_processor.file_processor.create_llm_provider")  # Patch the actual function
 @patch("hcl_processor.file_processor.open", new_callable=mock_open)
 @patch("hcl_processor.file_processor.os.makedirs")
 @patch("hcl_processor.file_processor.get_modules_name", return_value="module_name")
@@ -454,7 +472,7 @@ def test_empty_result_triggers_failback(
     mock_get_module,
     mock_makedirs,
     mock_open_func,
-    mock_create_llm_provider, # Updated mock name
+    mock_create_llm_provider,  # Updated mock name
     tmp_path,
 ):
     """Test that empty result from API triggers failback strategy"""
@@ -478,7 +496,7 @@ def test_empty_result_triggers_failback(
         "constants": {
             "file_processing": {
                 "terraform_extension": ".tf",
-                "default_search_resource": "target"
+                "default_search_resource": "target",
             }
         }
     }
@@ -486,7 +504,7 @@ def test_empty_result_triggers_failback(
     mock_provider_instance = MagicMock()
     # First call returns empty list, subsequent calls in failback succeed
     mock_provider_instance.invoke_single.side_effect = [
-        '[]',  # Main API call returns empty result
+        "[]",  # Main API call returns empty result
         '{"result": "success1"}',  # Failback chunk 1 succeeds
     ]
     mock_create_llm_provider.return_value = mock_provider_instance

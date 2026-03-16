@@ -2,8 +2,13 @@ import os
 import time
 from contextlib import contextmanager
 from typing import Generator
-from .logger_config import get_logger, log_operation_start, log_operation_success, log_operation_failure
 
+from .logger_config import (
+    get_logger,
+    log_operation_failure,
+    log_operation_start,
+    log_operation_success,
+)
 
 logger = get_logger("utils")
 
@@ -26,7 +31,9 @@ def reset_markdown_file(markdown_path: str) -> bool:
 
 
 @contextmanager
-def measure_time(operation_name: str, logger_instance=None) -> Generator[None, None, None]:
+def measure_time(
+    operation_name: str, logger_instance=None
+) -> Generator[None, None, None]:
     """
     Context manager to measure and log execution time of operations.
 

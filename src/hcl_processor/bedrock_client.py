@@ -3,8 +3,7 @@ import os
 
 import boto3
 from botocore.config import Config
-from botocore.exceptions import (ClientError, EndpointConnectionError,
-                                 ReadTimeoutError)
+from botocore.exceptions import ClientError, EndpointConnectionError, ReadTimeoutError
 
 from .llm_provider import LLMProvider, PayloadTooLargeError
 from .logger_config import get_logger, log_exception
@@ -20,12 +19,20 @@ class BedrockProvider(LLMProvider):
     """
 
     def __init__(self, config: dict, system_config: dict):
-        super().__init__(config, system_config) # Call super with full config and system_config
-        self.config = config # Store full config for non-provider specific items (e.g. modules)
+        super().__init__(
+            config, system_config
+        )  # Call super with full config and system_config
+        self.config = (
+            config  # Store full config for non-provider specific items (e.g. modules)
+        )
         self.system_config = system_config
-        self.provider_settings = config["provider_config"]["settings"] # Store specific provider settings
+        self.provider_settings = config["provider_config"][
+            "settings"
+        ]  # Store specific provider settings
         self.bedrock_client = self._setup_bedrock_client()
-        self._output_schema = self.provider_settings["output_json"] # Extract output_json from provider_settings
+        self._output_schema = self.provider_settings[
+            "output_json"
+        ]  # Extract output_json from provider_settings
         self._schema_wrapped = False  # Track if array schema was wrapped in object
 
     @property
@@ -40,41 +47,59 @@ class BedrockProvider(LLMProvider):
         Sets up and returns a boto3 Bedrock runtime client.
         """
         timeout_config = {
-            "read_timeout": self.provider_settings.get( # Use provider_settings
+            "read_timeout": self.provider_settings.get(  # Use provider_settings
                 "read_timeout",
                 self.system_config["default_bedrock"]["timeout_config"]["read_timeout"],
             ),
-            "connect_timeout": self.provider_settings.get( # Use provider_settings
+            "connect_timeout": self.provider_settings.get(  # Use provider_settings
                 "connect_timeout",
-                self.system_config["default_bedrock"]["timeout_config"]["connect_timeout"],
+                self.system_config["default_bedrock"]["timeout_config"][
+                    "connect_timeout"
+                ],
             ),
-            "retries": self.provider_settings.get( # Use provider_settings
+            "retries": self.provider_settings.get(  # Use provider_settings
                 "retries",
                 {
-                    "max_attempts": self.system_config["default_bedrock"]["timeout_config"][
+                    "max_attempts": self.system_config["default_bedrock"][
+                        "timeout_config"
+                    ]["retries"]["max_attempts"],
+                    "mode": self.system_config["default_bedrock"]["timeout_config"][
                         "retries"
-                    ]["max_attempts"],
-                    "mode": self.system_config["default_bedrock"]["timeout_config"]["retries"][
-                        "mode"
-                    ],
+                    ]["mode"],
                 },
             ),
         }
         bedrock_config = Config(**timeout_config)
 
         session = None
-        if self.provider_settings.get("aws_profile") is not None: # Use provider_settings
+        if (
+            self.provider_settings.get("aws_profile") is not None
+        ):  # Use provider_settings
             logger.info(
-                f"Using AWS profile: {self.provider_settings.get('aws_profile')}" # Use provider_settings
+                f"Using AWS profile: {self.provider_settings.get('aws_profile')}"  # Use provider_settings
             )
-            session = boto3.Session(profile_name=self.provider_settings.get("aws_profile")) # Use provider_settings
+            session = boto3.Session(
+                profile_name=self.provider_settings.get("aws_profile")
+            )  # Use provider_settings
         else:
             logger.info(
                 "No AWS profile specified, using environment variables for credentials."
             )
-            aws_access_key_id = self.provider_settings.get("aws_access_key_id") or os.getenv("AWS_ACCESS_KEY_ID") # Use provider_settings
-            aws_secret_access_key = self.provider_settings.get("aws_secret_access_key") or os.getenv("AWS_SECRET_ACCESS_KEY") # Use provider_settings
-            aws_session_token = self.provider_settings.get("aws_session_token") or os.getenv("AWS_SESSION_TOKEN") # Use provider_settings
+            aws_access_key_id = self.provider_settings.get(
+                "aws_access_key_id"
+            ) or os.getenv(
+                "AWS_ACCESS_KEY_ID"
+            )  # Use provider_settings
+            aws_secret_access_key = self.provider_settings.get(
+                "aws_secret_access_key"
+            ) or os.getenv(
+                "AWS_SECRET_ACCESS_KEY"
+            )  # Use provider_settings
+            aws_session_token = self.provider_settings.get(
+                "aws_session_token"
+            ) or os.getenv(
+                "AWS_SESSION_TOKEN"
+            )  # Use provider_settings
             if aws_access_key_id and aws_secret_access_key:
                 session = boto3.Session(
                     aws_access_key_id=aws_access_key_id,
@@ -85,13 +110,17 @@ class BedrockProvider(LLMProvider):
                 logger.error(
                     "No AWS credentials provided. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY."
                 )
-                raise Exception("AWS credentials not found. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables.")
+                raise Exception(
+                    "AWS credentials not found. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables."
+                )
 
         logger.info(
-            f"Using AWS region: {self.provider_settings.get('aws_region','us-east-1')}" # Use provider_settings
+            f"Using AWS region: {self.provider_settings.get('aws_region','us-east-1')}"  # Use provider_settings
         )
         return session.client(
-            "bedrock-runtime", region_name=self.provider_settings.get('aws_region','us-east-1'), config=bedrock_config # Use provider_settings
+            "bedrock-runtime",
+            region_name=self.provider_settings.get("aws_region", "us-east-1"),
+            config=bedrock_config,  # Use provider_settings
         )
 
     def _build_tool_config(self) -> dict:
@@ -105,13 +134,13 @@ class BedrockProvider(LLMProvider):
         if schema.get("type") == "array":
             wrapped_schema = {
                 "type": "object",
-                "properties": {
-                    "data": schema
-                },
-                "required": ["data"]
+                "properties": {"data": schema},
+                "required": ["data"],
             }
             self._schema_wrapped = True
-            logger.debug("Array schema detected, wrapping in object for Bedrock API compatibility")
+            logger.debug(
+                "Array schema detected, wrapping in object for Bedrock API compatibility"
+            )
         else:
             wrapped_schema = schema
             self._schema_wrapped = False
@@ -122,9 +151,7 @@ class BedrockProvider(LLMProvider):
                     "toolSpec": {
                         "name": self.system_config["constants"]["bedrock"]["tool_name"],
                         "description": "Validates and formats JSON output",
-                        "inputSchema": {
-                            "json": wrapped_schema
-                        }
+                        "inputSchema": {"json": wrapped_schema},
                     }
                 }
             ],
@@ -132,7 +159,7 @@ class BedrockProvider(LLMProvider):
                 "tool": {
                     "name": self.system_config["constants"]["bedrock"]["tool_name"]
                 }
-            }
+            },
         }
         return tool_config
 
@@ -141,13 +168,15 @@ class BedrockProvider(LLMProvider):
         Performs a single API call to the AWS Bedrock converse API.
         Translates size-related ClientErrors into PayloadTooLargeError.
         """
-        modules_enabled = self.config.get("modules", {}).get("enabled", True) # Keep self.config for global modules config
+        modules_enabled = self.config.get("modules", {}).get(
+            "enabled", True
+        )  # Keep self.config for global modules config
         modules_data_str = modules_data if (modules_data is not None) else ""
 
         final_system_prompt = (
             self.system_config["system_prompt"]
             + "\n"
-            + self.provider_settings["system_prompt"] # Use provider_settings
+            + self.provider_settings["system_prompt"]  # Use provider_settings
         )
         final_system_prompt = final_system_prompt.replace(
             "{modules_data}", modules_data_str if modules_enabled else ""
@@ -157,28 +186,35 @@ class BedrockProvider(LLMProvider):
         system = [{"text": final_system_prompt}]
 
         inference_config = {
-            "maxTokens": self.provider_settings["payload"].get( # Use provider_settings
-                "max_tokens", self.system_config["default_bedrock"]["payload"]["max_tokens"]
+            "maxTokens": self.provider_settings["payload"].get(  # Use provider_settings
+                "max_tokens",
+                self.system_config["default_bedrock"]["payload"]["max_tokens"],
             ),
-            "temperature": self.provider_settings["payload"].get( # Use provider_settings
-                "temperature", self.system_config["default_bedrock"]["payload"]["temperature"]
+            "temperature": self.provider_settings[
+                "payload"
+            ].get(  # Use provider_settings
+                "temperature",
+                self.system_config["default_bedrock"]["payload"]["temperature"],
             ),
-            "topP": self.provider_settings["payload"].get( # Use provider_settings
+            "topP": self.provider_settings["payload"].get(  # Use provider_settings
                 "top_p", self.system_config["default_bedrock"]["payload"]["top_p"]
-            )
+            ),
         }
 
         tool_config = self._build_tool_config()
 
         try:
-            model_id = self.provider_settings.get("model_id", self.system_config["constants"]["bedrock"]["default_model_id"]) # Use provider_settings
+            model_id = self.provider_settings.get(
+                "model_id",
+                self.system_config["constants"]["bedrock"]["default_model_id"],
+            )  # Use provider_settings
             with measure_time(f"AWS Bedrock API call: {model_id}", logger):
                 response = self.bedrock_client.converse(
                     modelId=model_id,
                     messages=messages,
                     system=system,
                     inferenceConfig=inference_config,
-                    toolConfig=tool_config
+                    toolConfig=tool_config,
                 )
             logger.debug(f"Bedrock response:\n {response}")
 
@@ -192,11 +228,20 @@ class BedrockProvider(LLMProvider):
 
             if "toolUse" in content:
                 tool_use = content["toolUse"]
-                logger.debug(f"Tool use response: {json.dumps(tool_use, indent=2, ensure_ascii=False)}")
-                if tool_use["name"] == self.system_config["constants"]["bedrock"]["tool_name"]:
+                logger.debug(
+                    f"Tool use response: {json.dumps(tool_use, indent=2, ensure_ascii=False)}"
+                )
+                if (
+                    tool_use["name"]
+                    == self.system_config["constants"]["bedrock"]["tool_name"]
+                ):
                     result = tool_use["input"]
                     # Unwrap if schema was wrapped for Bedrock API compatibility
-                    if self._schema_wrapped and isinstance(result, dict) and "data" in result:
+                    if (
+                        self._schema_wrapped
+                        and isinstance(result, dict)
+                        and "data" in result
+                    ):
                         result = result["data"]
                         logger.debug("Unwrapping array data from object wrapper")
                     return json.dumps(result, ensure_ascii=False)
@@ -205,7 +250,9 @@ class BedrockProvider(LLMProvider):
                 # Fallback to plain text if toolUse is not present
                 return content.get("text", "")
 
-            raise json.JSONDecodeError("Invalid response format: missing text or toolUse", "", 0)
+            raise json.JSONDecodeError(
+                "Invalid response format: missing text or toolUse", "", 0
+            )
 
         except ClientError as e:
             # ★ Translate Bedrock-specific ClientError to common PayloadTooLargeError

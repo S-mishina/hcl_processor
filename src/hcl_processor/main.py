@@ -2,13 +2,12 @@ import logging
 import os
 import sys
 
-from botocore.exceptions import (ClientError, EndpointConnectionError,
-                                 ReadTimeoutError)
+from botocore.exceptions import ClientError, EndpointConnectionError, ReadTimeoutError
 
 from .cli import parse_args
 from .config_loader import load_config, load_system_config
 from .file_processor import run_hcl_file_workflow
-from .logger_config import setup_logger, log_exception
+from .logger_config import log_exception, setup_logger
 from .utils import reset_markdown_file
 
 
@@ -64,7 +63,9 @@ def main() -> int:
 
             # Collect all .tf files in deterministic order
             tf_files = []
-            tf_extension = system_config["constants"]["file_processing"]["terraform_extension"]
+            tf_extension = system_config["constants"]["file_processing"][
+                "terraform_extension"
+            ]
 
             for root, _, files in os.walk(resource["folder"]):
                 for file_name in sorted(files):  # Sort within directory

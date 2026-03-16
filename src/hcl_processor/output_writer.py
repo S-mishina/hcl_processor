@@ -4,10 +4,16 @@ import os
 import re
 
 import jsonschema
-from jinja2 import Environment, BaseLoader, FileSystemLoader, TemplateNotFound, TemplateSyntaxError
+from jinja2 import (
+    BaseLoader,
+    Environment,
+    FileSystemLoader,
+    TemplateNotFound,
+    TemplateSyntaxError,
+)
 
-from .utils import ensure_directory_exists, measure_time
 from .logger_config import get_logger, log_exception
+from .utils import ensure_directory_exists, measure_time
 
 logger = get_logger("output_writer")
 
@@ -37,10 +43,14 @@ def output_md(md_title: str, config: dict) -> None:
         schema_columns = config.get("schema_columns", [])
         filtered_data = []
         for item in data:
-            filtered_item = {col: clean_cell(item.get(col, '')) for col in schema_columns}
+            filtered_item = {
+                col: clean_cell(item.get(col, "")) for col in schema_columns
+            }
             filtered_data.append(filtered_item)
 
-        logger.debug(f"Processing {len(filtered_data)} data items with {len(schema_columns)} columns")
+        logger.debug(
+            f"Processing {len(filtered_data)} data items with {len(schema_columns)} columns"
+        )
 
         # Setup template environment
         env = Environment(loader=BaseLoader(), autoescape=False)
@@ -63,7 +73,11 @@ def output_md(md_title: str, config: dict) -> None:
                 raise ValueError(f"Syntax error in template file: {str(e)}")
         else:
             # Use template string from config or default template
-            template_str = template_config if isinstance(template_config, str) else get_default_template()
+            template_str = (
+                template_config
+                if isinstance(template_config, str)
+                else get_default_template()
+            )
             template = env.from_string(template_str)
             logger.debug("Using default template or config template string")
 
@@ -71,14 +85,14 @@ def output_md(md_title: str, config: dict) -> None:
         ensure_directory_exists(config["output"]["markdown_path"])
         try:
             rendered = template.render(
-                title=md_title,
-                data=filtered_data,
-                columns=schema_columns
+                title=md_title, data=filtered_data, columns=schema_columns
             )
             rendered_size_kb = len(rendered) / 1024
             logger.debug(f"Rendered Markdown size: {rendered_size_kb:.2f} KB")
 
-            with open(config["output"]["markdown_path"], "a", encoding="utf-8") as md_file:
+            with open(
+                config["output"]["markdown_path"], "a", encoding="utf-8"
+            ) as md_file:
                 logger.debug(f"Rendered Markdown:\n {rendered}")
                 md_file.write(rendered + "\n")
             logger.info(f"Saved to Markdown file: {config['output']['markdown_path']}")
@@ -120,7 +134,7 @@ def clean_cell(cell) -> str:
         cell = re.sub(r"(\$\{.*\})(<br>|$)", r"\1 \2", cell)
         cell = re.sub(r"(<br>)", r" \1 ", cell)
         return cell.strip()
-    return str(cell) if cell is not None else ''
+    return str(cell) if cell is not None else ""
 
 
 def validate_output_json(output_str: str, schema: dict) -> dict | list:
@@ -138,7 +152,9 @@ def validate_output_json(output_str: str, schema: dict) -> dict | list:
     with measure_time(f"JSON validation (size: {len(output_str)//1024:.1f}KB)", logger):
         try:
             parsed = json.loads(output_str)
-            logger.debug(f"JSON parsed successfully: {len(parsed) if isinstance(parsed, list) else 1} items")
+            logger.debug(
+                f"JSON parsed successfully: {len(parsed) if isinstance(parsed, list) else 1} items"
+            )
             jsonschema.validate(instance=parsed, schema=schema)
             logger.debug("JSON schema validation passed")
             return parsed

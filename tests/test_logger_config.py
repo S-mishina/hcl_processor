@@ -1,15 +1,15 @@
 import logging
 import unittest
-from unittest.mock import patch
 from io import StringIO
+from unittest.mock import patch
 
 from src.hcl_processor.logger_config import (
     get_logger,
-    setup_logger,
     log_exception,
+    log_operation_failure,
     log_operation_start,
     log_operation_success,
-    log_operation_failure
+    setup_logger,
 )
 
 
@@ -22,7 +22,7 @@ class TestLoggerConfig(unittest.TestCase):
         logging.getLogger().handlers.clear()
         # Clear all hcl_processor loggers
         for logger_name in list(logging.getLogger().manager.loggerDict.keys()):
-            if logger_name.startswith('hcl_processor'):
+            if logger_name.startswith("hcl_processor"):
                 logger = logging.getLogger(logger_name)
                 logger.handlers.clear()
                 logger.setLevel(logging.NOTSET)
@@ -40,7 +40,7 @@ class TestLoggerConfig(unittest.TestCase):
         """Helper method to capture log output"""
         stream = StringIO()
         handler = logging.StreamHandler(stream)
-        handler.setFormatter(logging.Formatter('%(levelname)s:%(name)s:%(message)s'))
+        handler.setFormatter(logging.Formatter("%(levelname)s:%(name)s:%(message)s"))
 
         # Ensure logger has appropriate level
         if not logger.level or logger.level == logging.NOTSET:
@@ -61,13 +61,13 @@ class TestLoggerConfig(unittest.TestCase):
 
     def test_setup_logger_info_level(self):
         """Test setup_logger with INFO level"""
-        with patch('sys.stdout', new_callable=StringIO):
+        with patch("sys.stdout", new_callable=StringIO):
             logger = setup_logger(level=logging.INFO)
             self.assertEqual(logger.level, logging.INFO)
 
     def test_setup_logger_debug_level(self):
         """Test setup_logger with DEBUG level"""
-        with patch('sys.stdout', new_callable=StringIO):
+        with patch("sys.stdout", new_callable=StringIO):
             logger = setup_logger(level=logging.DEBUG)
             self.assertEqual(logger.level, logging.DEBUG)
 
@@ -77,8 +77,7 @@ class TestLoggerConfig(unittest.TestCase):
         exception = ValueError("Test error")
 
         output = self.capture_log_output(
-            logger,
-            lambda: log_exception(logger, exception, "Test context")
+            logger, lambda: log_exception(logger, exception, "Test context")
         )
 
         self.assertIn("Test context", output)
@@ -91,8 +90,7 @@ class TestLoggerConfig(unittest.TestCase):
         exception = ValueError("Test error")
 
         output = self.capture_log_output(
-            logger,
-            lambda: log_exception(logger, exception, "Test context")
+            logger, lambda: log_exception(logger, exception, "Test context")
         )
 
         self.assertIn("Test context", output)
@@ -103,8 +101,7 @@ class TestLoggerConfig(unittest.TestCase):
         logger = get_logger("test")
 
         output = self.capture_log_output(
-            logger,
-            lambda: log_operation_start(logger, "Test operation")
+            logger, lambda: log_operation_start(logger, "Test operation")
         )
 
         self.assertIn("Starting", output)
@@ -115,8 +112,7 @@ class TestLoggerConfig(unittest.TestCase):
         logger = get_logger("test")
 
         output = self.capture_log_output(
-            logger,
-            lambda: log_operation_success(logger, "Test operation")
+            logger, lambda: log_operation_success(logger, "Test operation")
         )
 
         self.assertIn("Successfully completed", output)
@@ -128,8 +124,7 @@ class TestLoggerConfig(unittest.TestCase):
         exception = Exception("Test reason")
 
         output = self.capture_log_output(
-            logger,
-            lambda: log_operation_failure(logger, "Test operation", exception)
+            logger, lambda: log_operation_failure(logger, "Test operation", exception)
         )
 
         self.assertIn("Failed", output)
@@ -143,6 +138,7 @@ class TestLoggerConfig(unittest.TestCase):
         stream = StringIO()
         handler = logging.StreamHandler(stream)
         from src.hcl_processor.logger_config import create_colored_formatter
+
         handler.setFormatter(create_colored_formatter())
         logger.addHandler(handler)
         logger.setLevel(logging.INFO)
@@ -165,6 +161,7 @@ class TestLoggerConfig(unittest.TestCase):
         stream = StringIO()
         handler = logging.StreamHandler(stream)
         from src.hcl_processor.logger_config import create_colored_formatter
+
         handler.setFormatter(create_colored_formatter())
         logger.addHandler(handler)
         logger.setLevel(logging.INFO)
@@ -187,6 +184,7 @@ class TestLoggerConfig(unittest.TestCase):
         stream = StringIO()
         handler = logging.StreamHandler(stream)
         from src.hcl_processor.logger_config import create_colored_formatter
+
         handler.setFormatter(create_colored_formatter())
         logger.addHandler(handler)
         logger.setLevel(logging.DEBUG)
@@ -207,8 +205,12 @@ class TestLoggerConfig(unittest.TestCase):
         logger2 = get_logger("module2")
 
         # Use our helper method for both loggers
-        output1 = self.capture_log_output(logger1, lambda: logger1.info("Test message 1"))
-        output2 = self.capture_log_output(logger2, lambda: logger2.info("Test message 2"))
+        output1 = self.capture_log_output(
+            logger1, lambda: logger1.info("Test message 1")
+        )
+        output2 = self.capture_log_output(
+            logger2, lambda: logger2.info("Test message 2")
+        )
 
         # Both should have content
         self.assertIn("Test message 1", output1)
@@ -217,5 +219,5 @@ class TestLoggerConfig(unittest.TestCase):
         self.assertIn("hcl_processor.module2", output2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

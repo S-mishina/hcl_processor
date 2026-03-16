@@ -1,11 +1,12 @@
-from abc import ABC, abstractmethod
 import logging
+from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
 
 
 class PayloadTooLargeError(Exception):
     """Custom exception for when the payload to the LLM is too large."""
+
     pass
 
 
@@ -13,6 +14,7 @@ class LLMProvider(ABC):
     """
     Abstract Base Class defining the interface for all LLM providers.
     """
+
     def __init__(self, config: dict, system_config: dict):
         self.config = config
         self.system_config = system_config

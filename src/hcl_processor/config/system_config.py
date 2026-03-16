@@ -46,12 +46,12 @@ def get_system_config() -> dict:
                 "default_model_id": "anthropic.claude-3-5-sonnet-20240620-v1:0",
                 "tool_name": "json_validator",
                 "tool_description": "Validates and formats JSON output",
-                "target_json_key": "monitors"
+                "target_json_key": "monitors",
             },
             "file_processing": {
                 "terraform_extension": ".tf",
-                "default_search_resource": "monitors"
-            }
+                "default_search_resource": "monitors",
+            },
         },
     }
     return system_config
