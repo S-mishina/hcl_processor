@@ -5,8 +5,8 @@ import jsonschema
 import yaml
 
 from .config.system_config import get_system_config
-from .utils import measure_time
 from .logger_config import get_logger
+from .utils import measure_time
 
 logger = get_logger("config_loader")
 
@@ -24,7 +24,13 @@ BEDROCK_PROVIDER_SCHEMA = {
                 "top_p": {"type": "number"},
                 "top_k": {"type": "number"},
             },
-            "required": ["anthropic_version", "max_tokens", "temperature", "top_p", "top_k"],
+            "required": [
+                "anthropic_version",
+                "max_tokens",
+                "temperature",
+                "top_p",
+                "top_k",
+            ],
         },
         "read_timeout": {"type": "integer"},
         "connect_timeout": {"type": "integer"},
@@ -35,10 +41,10 @@ BEDROCK_PROVIDER_SCHEMA = {
         "model_id": {"type": "string"},
     },
     "required": ["system_prompt", "payload", "output_json"],
-    "additionalProperties": False
+    "additionalProperties": False,
 }
 
-PROVIDER_KEYS = ["bedrock"] # This will be extended for other providers later
+PROVIDER_KEYS = ["bedrock"]  # This will be extended for other providers later
 
 CONFIG_SCHEMA_BASE = {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -48,7 +54,9 @@ CONFIG_SCHEMA_BASE = {
             "type": "object",
             "properties": {
                 "name": {"type": "string", "enum": PROVIDER_KEYS},
-                "settings": {"type": "object"} # This will be replaced with specific schema later
+                "settings": {
+                    "type": "object"
+                },  # This will be replaced with specific schema later
             },
             "required": ["name", "settings"],
         },
@@ -58,18 +66,32 @@ CONFIG_SCHEMA_BASE = {
                 "resource_data": {
                     "type": "object",
                     "oneOf": [
-                        {"required": ["files"], "properties": {"files": {"type": "array", "items": {"type": "string"}}}},
-                        {"required": ["folder"], "properties": {"folder": {"type": "string"}}}
-                    ]
+                        {
+                            "required": ["files"],
+                            "properties": {
+                                "files": {"type": "array", "items": {"type": "string"}}
+                            },
+                        },
+                        {
+                            "required": ["folder"],
+                            "properties": {"folder": {"type": "string"}},
+                        },
+                    ],
                 },
                 "modules": {
                     "type": "object",
-                    "properties": {"path": {"type": "string"}, "enabled": {"type": "boolean"}},
-                    "required": ["enabled"]
+                    "properties": {
+                        "path": {"type": "string"},
+                        "enabled": {"type": "boolean"},
+                    },
+                    "required": ["enabled"],
                 },
                 "local_files": {
                     "type": "array",
-                    "items": {"type": "object", "additionalProperties": {"type": "string"}}
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": {"type": "string"},
+                    },
                 },
                 "failback": {
                     "type": "object",
@@ -79,13 +101,13 @@ CONFIG_SCHEMA_BASE = {
                         "options": {
                             "type": "object",
                             "properties": {"target": {"type": "string"}},
-                            "required": ["target"]
-                        }
+                            "required": ["target"],
+                        },
                     },
-                    "required": ["enabled", "type"]
+                    "required": ["enabled", "type"],
                 },
             },
-            "required": ["resource_data", "modules", "local_files"]
+            "required": ["resource_data", "modules", "local_files"],
         },
         "schema_columns": {"type": "array", "items": {"type": "string"}},
         "output": {
@@ -93,13 +115,22 @@ CONFIG_SCHEMA_BASE = {
             "properties": {
                 "json_path": {"type": "string"},
                 "markdown_path": {"type": "string"},
-                "template": {"oneOf": [{"type": "string"}, {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}]}
+                "template": {
+                    "oneOf": [
+                        {"type": "string"},
+                        {
+                            "type": "object",
+                            "properties": {"path": {"type": "string"}},
+                            "required": ["path"],
+                        },
+                    ]
+                },
             },
-            "required": ["json_path", "markdown_path"]
+            "required": ["json_path", "markdown_path"],
         },
     },
     "required": ["provider_config", "input", "output"],
-    "additionalProperties": False
+    "additionalProperties": False,
 }
 
 
@@ -123,8 +154,8 @@ def get_default_config() -> dict:
             "description",
             "severity",
             "threshold",
-            "evaluation_period"
-        ]
+            "evaluation_period",
+        ],
     }
 
 
@@ -202,9 +233,13 @@ def load_config(config_path: str) -> dict:
         found_providers = [key for key in PROVIDER_KEYS if key in raw_config]
 
         if len(found_providers) == 0:
-            raise ValueError(f"Invalid configuration: No LLM provider (e.g., '{PROVIDER_KEYS[0]}') specified at the top level. Supported providers: {', '.join(PROVIDER_KEYS)}")
+            raise ValueError(
+                f"Invalid configuration: No LLM provider (e.g., '{PROVIDER_KEYS[0]}') specified at the top level. Supported providers: {', '.join(PROVIDER_KEYS)}"
+            )
         elif len(found_providers) > 1:
-            raise ValueError(f"Invalid configuration: Multiple LLM providers specified at the top level: {', '.join(found_providers)}. Only one is allowed.")
+            raise ValueError(
+                f"Invalid configuration: Multiple LLM providers specified at the top level: {', '.join(found_providers)}. Only one is allowed."
+            )
 
         active_provider_name = found_providers[0]
         # Get provider-specific settings without removing from raw_config yet
@@ -215,7 +250,7 @@ def load_config(config_path: str) -> dict:
         config_for_internal_use = {
             "provider_config": {
                 "name": active_provider_name,
-                "settings": provider_specific_settings
+                "settings": provider_specific_settings,
             }
         }
         # Copy other allowed top-level keys from raw_config
@@ -227,12 +262,19 @@ def load_config(config_path: str) -> dict:
         # Check for any unexpected top-level keys in raw_config that are not "active_provider_name" or "allowed_top_level_keys"
         # This acts as an additional check for extraneous keys that are not provider or common config
         for key in raw_config:
-            if key != active_provider_name and key not in allowed_top_level_keys and key not in PROVIDER_KEYS: # Add PROVIDER_KEYS to avoid checking against itself if multiple are present
-                raise ValueError(f"Invalid configuration: Unexpected top-level key '{key}' found. Only one LLM provider key and keys like {', '.join(allowed_top_level_keys)} are allowed.")
-
+            if (
+                key != active_provider_name
+                and key not in allowed_top_level_keys
+                and key not in PROVIDER_KEYS
+            ):  # Add PROVIDER_KEYS to avoid checking against itself if multiple are present
+                raise ValueError(
+                    f"Invalid configuration: Unexpected top-level key '{key}' found. Only one LLM provider key and keys like {', '.join(allowed_top_level_keys)} are allowed."
+                )
 
         config = config_for_internal_use
-        logger.debug(f"Normalized config (internal representation for validation):\n {config}")
+        logger.debug(
+            f"Normalized config (internal representation for validation):\n {config}"
+        )
 
         # Load default configuration
         default_config = get_default_config()
@@ -241,17 +283,24 @@ def load_config(config_path: str) -> dict:
         current_schema = deepcopy(CONFIG_SCHEMA_BASE)
 
         if active_provider_name == "bedrock":
-            current_schema["properties"]["provider_config"]["properties"]["settings"] = BEDROCK_PROVIDER_SCHEMA
+            current_schema["properties"]["provider_config"]["properties"][
+                "settings"
+            ] = BEDROCK_PROVIDER_SCHEMA
         else:
             raise ValueError(f"Unsupported provider: {active_provider_name}")
 
-
         # Handle output_json conversion before validation
-        if "output_json" in config["provider_config"]["settings"] and isinstance(config["provider_config"]["settings"]["output_json"], str):
+        if "output_json" in config["provider_config"]["settings"] and isinstance(
+            config["provider_config"]["settings"]["output_json"], str
+        ):
             try:
-                config["provider_config"]["settings"]["output_json"] = json.loads(config["provider_config"]["settings"]["output_json"])
+                config["provider_config"]["settings"]["output_json"] = json.loads(
+                    config["provider_config"]["settings"]["output_json"]
+                )
             except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON in provider_config.settings.output_json: {e}")
+                raise ValueError(
+                    f"Invalid JSON in provider_config.settings.output_json: {e}"
+                )
 
         try:
             jsonschema.validate(instance=config, schema=current_schema)

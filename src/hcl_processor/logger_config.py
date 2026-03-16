@@ -2,41 +2,40 @@
 Logger configuration and utility module
 Provides unified log formatting and level settings
 """
+
 import logging
 import sys
 from typing import Optional
 
-
 # ANSI color codes
 LOG_COLORS = {
-    'DEBUG': '\033[36m',      # Cyan
-    'INFO': '\033[32m',       # Green
-    'WARNING': '\033[33m',    # Yellow
-    'ERROR': '\033[31m',      # Red
-    'CRITICAL': '\033[35m',   # Magenta
-    'RESET': '\033[0m'        # Reset
+    "DEBUG": "\033[36m",  # Cyan
+    "INFO": "\033[32m",  # Green
+    "WARNING": "\033[33m",  # Yellow
+    "ERROR": "\033[31m",  # Red
+    "CRITICAL": "\033[35m",  # Magenta
+    "RESET": "\033[0m",  # Reset
 }
 
 
 def create_colored_formatter() -> logging.Formatter:
     """Create a color-enabled formatter"""
+
     class ColoredFormatter(logging.Formatter):
         def format(self, record: logging.LogRecord) -> str:
-            log_color = LOG_COLORS.get(record.levelname, LOG_COLORS['RESET'])
-            reset_color = LOG_COLORS['RESET']
+            log_color = LOG_COLORS.get(record.levelname, LOG_COLORS["RESET"])
+            reset_color = LOG_COLORS["RESET"]
             record.levelname = f"{log_color}{record.levelname}{reset_color}"
             return super().format(record)
 
     return ColoredFormatter(
         fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
 
 def setup_logger(
-    name: str = __name__,
-    level: int = logging.INFO,
-    enable_colors: bool = True
+    name: str = __name__, level: int = logging.INFO, enable_colors: bool = True
 ) -> logging.Logger:
     """
     Setup unified logging configuration
@@ -65,7 +64,7 @@ def setup_logger(
     else:
         formatter = logging.Formatter(
             fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
 
     console_handler.setFormatter(formatter)
@@ -82,7 +81,7 @@ def log_exception(
     logger: logging.Logger,
     exception: Exception,
     context: Optional[str] = None,
-    level: int = logging.ERROR
+    level: int = logging.ERROR,
 ) -> None:
     """
     Unified exception logging
@@ -104,7 +103,9 @@ def log_exception(
         logger.debug("Stack trace:", exc_info=True)
 
 
-def log_operation_start(logger: logging.Logger, operation: str, target: str = "") -> None:
+def log_operation_start(
+    logger: logging.Logger, operation: str, target: str = ""
+) -> None:
     """Log operation start"""
     message = f"Starting {operation}"
     if target:
@@ -112,7 +113,9 @@ def log_operation_start(logger: logging.Logger, operation: str, target: str = ""
     logger.info(message)
 
 
-def log_operation_success(logger: logging.Logger, operation: str, target: str = "") -> None:
+def log_operation_success(
+    logger: logging.Logger, operation: str, target: str = ""
+) -> None:
     """Log operation success"""
     message = f"Successfully completed {operation}"
     if target:
@@ -121,10 +124,7 @@ def log_operation_success(logger: logging.Logger, operation: str, target: str = 
 
 
 def log_operation_failure(
-    logger: logging.Logger,
-    operation: str,
-    exception: Exception,
-    target: str = ""
+    logger: logging.Logger, operation: str, exception: Exception, target: str = ""
 ) -> None:
     """Log operation failure"""
     context = f"Failed {operation}"

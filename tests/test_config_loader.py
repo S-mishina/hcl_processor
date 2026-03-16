@@ -1,9 +1,10 @@
 import os
 import tempfile
 import unittest
+
 import yaml
 
-from src.hcl_processor.config_loader import load_config, get_default_config
+from src.hcl_processor.config_loader import get_default_config, load_config
 
 
 class TestConfigLoader(unittest.TestCase):
@@ -29,23 +30,16 @@ class TestConfigLoader(unittest.TestCase):
                     "max_tokens": 100,
                     "temperature": 0,
                     "top_p": 1,
-                    "top_k": 0
+                    "top_k": 0,
                 },
-                "output_json": {"test": "schema"}
+                "output_json": {"test": "schema"},
             },
             "input": {
-                "resource_data": {
-                    "files": ["test.tf"]
-                },
-                "modules": {
-                    "enabled": False
-                },
-                "local_files": []
+                "resource_data": {"files": ["test.tf"]},
+                "modules": {"enabled": False},
+                "local_files": [],
             },
-            "output": {
-                "json_path": "output.json",
-                "markdown_path": "output.md"
-            }
+            "output": {"json_path": "output.json", "markdown_path": "output.md"},
         }
 
     def test_load_config_with_bedrock_is_normalized(self):
@@ -58,18 +52,28 @@ class TestConfigLoader(unittest.TestCase):
         # Verify internal normalization
         self.assertIn("provider_config", config)
         self.assertEqual(config["provider_config"]["name"], "bedrock")
-        self.assertEqual(config["provider_config"]["settings"]["system_prompt"], "test prompt")
-        self.assertEqual(config["provider_config"]["settings"]["payload"]["max_tokens"], 100)
-        
+        self.assertEqual(
+            config["provider_config"]["settings"]["system_prompt"], "test prompt"
+        )
+        self.assertEqual(
+            config["provider_config"]["settings"]["payload"]["max_tokens"], 100
+        )
+
         # Verify that default values are still applied
         default_config = get_default_config()
         self.assertEqual(config["schema_columns"], default_config["schema_columns"])
-        self.assertEqual(config["output"].get("template"), default_config["output"]["template"])
+        self.assertEqual(
+            config["output"].get("template"), default_config["output"]["template"]
+        )
 
     def test_load_config_no_provider(self):
         config_data = {
-            "input": { "resource_data": {"files": ["test.tf"]}, "modules": {"enabled": False}, "local_files": [] },
-            "output": {"json_path": "output.json", "markdown_path": "output.md"}
+            "input": {
+                "resource_data": {"files": ["test.tf"]},
+                "modules": {"enabled": False},
+                "local_files": [],
+            },
+            "output": {"json_path": "output.json", "markdown_path": "output.md"},
         }
         self._write_config(config_data)
 
@@ -78,14 +82,34 @@ class TestConfigLoader(unittest.TestCase):
 
     def test_load_config_multiple_providers(self):
         config_data = {
-            "bedrock": {"system_prompt": "p1", "payload": {"anthropic_version": "v1", "max_tokens": 1, "temperature": 0, "top_p": 1, "top_k": 0}, "output_json": {}},
-            "gemini": {"system_prompt": "p2", "payload": {"max_output_tokens": 100, "temperature": 0.5, "top_p": 0.9}, "output_json": {}}, # Gemini config for testing
-            "input": { "resource_data": {"files": ["test.tf"]}, "modules": {"enabled": False}, "local_files": [] },
-            "output": {"json_path": "output.json", "markdown_path": "output.md"}
+            "bedrock": {
+                "system_prompt": "p1",
+                "payload": {
+                    "anthropic_version": "v1",
+                    "max_tokens": 1,
+                    "temperature": 0,
+                    "top_p": 1,
+                    "top_k": 0,
+                },
+                "output_json": {},
+            },
+            "gemini": {
+                "system_prompt": "p2",
+                "payload": {"max_output_tokens": 100, "temperature": 0.5, "top_p": 0.9},
+                "output_json": {},
+            },  # Gemini config for testing
+            "input": {
+                "resource_data": {"files": ["test.tf"]},
+                "modules": {"enabled": False},
+                "local_files": [],
+            },
+            "output": {"json_path": "output.json", "markdown_path": "output.md"},
         }
         self._write_config(config_data)
 
-        with self.assertRaisesRegex(ValueError, "Unexpected top-level key 'gemini' found"):
+        with self.assertRaisesRegex(
+            ValueError, "Unexpected top-level key 'gemini' found"
+        ):
             load_config(self.config_path)
 
     def test_load_config_output_json_string_conversion(self):
@@ -94,7 +118,10 @@ class TestConfigLoader(unittest.TestCase):
         self._write_config(config_data)
 
         config = load_config(self.config_path)
-        self.assertEqual(config["provider_config"]["settings"]["output_json"], {"test_key": "test_value"})
+        self.assertEqual(
+            config["provider_config"]["settings"]["output_json"],
+            {"test_key": "test_value"},
+        )
 
     def test_custom_config(self):
         config_data = self._get_base_bedrock_config()
@@ -121,6 +148,7 @@ class TestConfigLoader(unittest.TestCase):
         self.assertEqual(config["output"]["template"], {"path": "template.md.j2"})
         # Verify internal normalization still happens
         self.assertEqual(config["provider_config"]["name"], "bedrock")
+
 
 if __name__ == "__main__":
     unittest.main()

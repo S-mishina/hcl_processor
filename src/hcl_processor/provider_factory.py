@@ -1,5 +1,5 @@
-from .llm_provider import LLMProvider # Import LLMProvider abstract class
-from .bedrock_client import BedrockProvider # Import BedrockProvider concrete class
+from .bedrock_client import BedrockProvider  # Import BedrockProvider concrete class
+from .llm_provider import LLMProvider  # Import LLMProvider abstract class
 
 
 def create_llm_provider(config: dict, system_config: dict) -> LLMProvider:

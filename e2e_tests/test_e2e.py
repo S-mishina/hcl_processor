@@ -76,7 +76,9 @@ def validate_json_output(output_file: Path, min_items: int = 1):
 
     data = json.loads(content)
     assert isinstance(data, list), "JSON output should be an array"
-    assert len(data) >= min_items, f"Expected at least {min_items} items, got {len(data)}"
+    assert (
+        len(data) >= min_items
+    ), f"Expected at least {min_items} items, got {len(data)}"
 
     required_fields = [
         "monitor_name",
@@ -277,13 +279,17 @@ class TestE2EMonitorContent:
         """Test that monitor names are populated."""
         for item in basic_output:
             name = item.get("monitor_name", "")
-            assert name and name != "<UNKNOWN>", f"Monitor name is empty or unknown: {name}"
+            assert (
+                name and name != "<UNKNOWN>"
+            ), f"Monitor name is empty or unknown: {name}"
 
     def test_queries_present(self, basic_output):
         """Test that queries are present."""
         for item in basic_output:
             query = item.get("query", "")
-            assert query and query != "<UNKNOWN>", f"Query is empty or unknown for {item.get('monitor_name')}"
+            assert (
+                query and query != "<UNKNOWN>"
+            ), f"Query is empty or unknown for {item.get('monitor_name')}"
 
     def test_thresholds_have_values(self, basic_output):
         """Test that at least some thresholds have values."""
