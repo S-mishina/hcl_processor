@@ -473,7 +473,7 @@ def main():
                 f"  → \033[92mOK\033[0m ({result.execution_time_sec:.1f}s) - {result.message}"
             )
         elif result.status == ModelStatus.ACCESS_DENIED:
-            print(f"  → \033[93mAccess Denied\033[0m")
+            print("  → \033[93mAccess Denied\033[0m")
         else:
             print(f"  → \033[91mFailed\033[0m - {result.message}")
 
