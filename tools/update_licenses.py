@@ -7,6 +7,7 @@ LICENSE_FILE = Path("third_party_licenses.md")
 START_TAG = "<!-- LICENSE-LIST:START -->"
 END_TAG = "<!-- LICENSE-LIST:END -->"
 
+
 def get_license_table():
     """Run pip-licenses and get the markdown output."""
     try:
@@ -15,15 +16,18 @@ def get_license_table():
             [sys.executable, "-m", "piplicenses", "--format=markdown"],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
         print(f"Error running pip-licenses: {e}")
         return None
     except FileNotFoundError:
-        print("pip-licenses not found. Please install it with 'poetry add --group dev pip-licenses'")
+        print(
+            "pip-licenses not found. Please install it with 'poetry add --group dev pip-licenses'"
+        )
         return None
+
 
 def update_markdown():
     if not LICENSE_FILE.exists():
@@ -35,23 +39,18 @@ def update_markdown():
         return
 
     content = LICENSE_FILE.read_text()
-    
+
     # regex to find content between tags
-    pattern = re.compile(
-        f"{re.escape(START_TAG)}.*?{re.escape(END_TAG)}",
-        re.DOTALL
-    )
-    
-    new_content = pattern.sub(
-        f"{START_TAG}\n{new_table}\n{END_TAG}",
-        content
-    )
-    
+    pattern = re.compile(f"{re.escape(START_TAG)}.*?{re.escape(END_TAG)}", re.DOTALL)
+
+    new_content = pattern.sub(f"{START_TAG}\n{new_table}\n{END_TAG}", content)
+
     if content != new_content:
         LICENSE_FILE.write_text(new_content)
         print(f"Successfully updated {LICENSE_FILE}")
     else:
         print(f"No changes needed for {LICENSE_FILE}")
+
 
 if __name__ == "__main__":
     update_markdown()

@@ -149,7 +149,9 @@ def validate_output_json(output_str: str, schema: dict) -> dict | list:
         json.JSONDecodeError: If the output string is not valid JSON.
         jsonschema.ValidationError: If the output JSON does not match the schema.
     """
-    with measure_time(f"JSON validation (size: {len(output_str)//1024:.1f}KB)", logger):
+    with measure_time(
+        f"JSON validation (size: {len(output_str) // 1024:.1f}KB)", logger
+    ):
         try:
             parsed = json.loads(output_str)
             logger.debug(
