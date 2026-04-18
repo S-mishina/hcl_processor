@@ -7,5 +7,41 @@
   "automerge": true,
   "automergeType": "pr",
   "automergeStrategy": "squash",
-  "platformAutomerge": true
+  "platformAutomerge": true,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "^third_party_licenses\\.md$"
+      ],
+      "matchStrings": [
+        "\\| (?<depName>[a-zA-Z0-9._-]+)\\s+\\| (?<currentValue>[a-zA-Z0-9._-]+)\\s+\\|"
+      ],
+      "datasourceTemplate": "pypi"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": [
+        "boto3",
+        "botocore",
+        "s3transfer"
+      ],
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "groupName": "aws-sdk-python (patch)"
+    },
+    {
+      "matchPackageNames": [
+        "boto3",
+        "botocore",
+        "s3transfer"
+      ],
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "groupName": "aws-sdk-python (minor)"
+    }
+  ]
 }
