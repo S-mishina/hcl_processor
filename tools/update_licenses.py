@@ -1,12 +1,11 @@
 import subprocess
 import re
+import sys
 from pathlib import Path
 
 LICENSE_FILE = Path("third_party_licenses.md")
 START_TAG = "<!-- LICENSE-LIST:START -->"
 END_TAG = "<!-- LICENSE-LIST:END -->"
-
-import sys
 
 def get_license_table():
     """Run pip-licenses and get the markdown output."""
