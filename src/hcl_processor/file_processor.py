@@ -60,13 +60,13 @@ def _execute_failback_strategy(
                 )
                 hcl_output.append(validated_partial)
                 successful_chunks += 1
-                logger.debug(f"Chunk {i+1}/{total_chunks} processed successfully")
+                logger.debug(f"Chunk {i + 1}/{total_chunks} processed successfully")
             except Exception as e:
                 # Failback core philosophy: pass processing for continuity
                 log_exception(
-                    logger, e, f"Error processing resource chunk {i+1}/{total_chunks}"
+                    logger, e, f"Error processing resource chunk {i + 1}/{total_chunks}"
                 )
-                logger.warning(f"Skipping chunk {i+1} and continuing with next chunk")
+                logger.warning(f"Skipping chunk {i + 1} and continuing with next chunk")
                 pass  # Individual chunk failure should not stop overall processing
     except Exception as e:
         log_exception(logger, e, "Error processing resource chunk")

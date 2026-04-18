@@ -87,10 +87,13 @@ def test_run_hcl_file_workflow_success(
     mock_provider_instance.invoke_single.return_value = '{"key": "value"}'
     mock_create_llm_provider.return_value = mock_provider_instance
 
-    with patch(
-        "hcl_processor.file_processor.validate_output_json",
-        return_value={"validated": True},
-    ), patch("hcl_processor.file_processor.output_md") as mock_output_md:
+    with (
+        patch(
+            "hcl_processor.file_processor.validate_output_json",
+            return_value={"validated": True},
+        ),
+        patch("hcl_processor.file_processor.output_md") as mock_output_md,
+    ):
         run_hcl_file_workflow(str(file_path), config, system_config)
         mock_output_md.assert_called()
         mock_provider_instance.invoke_single.assert_called_once()
@@ -509,10 +512,13 @@ def test_empty_result_triggers_failback(
     ]
     mock_create_llm_provider.return_value = mock_provider_instance
 
-    with patch(
-        "hcl_processor.file_processor.validate_output_json",
-        side_effect=[[], [{"result": "success1"}]],  # First empty, then success
-    ), patch("hcl_processor.file_processor.output_md") as mock_output_md:
+    with (
+        patch(
+            "hcl_processor.file_processor.validate_output_json",
+            side_effect=[[], [{"result": "success1"}]],  # First empty, then success
+        ),
+        patch("hcl_processor.file_processor.output_md") as mock_output_md,
+    ):
         run_hcl_file_workflow(str(file_path), config, system_config)
         mock_output_md.assert_called()
         assert mock_provider_instance.invoke_single.call_count > 1

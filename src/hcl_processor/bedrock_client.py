@@ -115,7 +115,7 @@ class BedrockProvider(LLMProvider):
                 )
 
         logger.info(
-            f"Using AWS region: {self.provider_settings.get('aws_region','us-east-1')}"  # Use provider_settings
+            f"Using AWS region: {self.provider_settings.get('aws_region', 'us-east-1')}"  # Use provider_settings
         )
         return session.client(
             "bedrock-runtime",

@@ -715,6 +715,22 @@ This section is intended for developers who want to understand, extend, or modif
 
 Please test your changes before submitting.
 
+### License Synchronization (for Developers)
+
+When you add a new library to the project, you must update the `third_party_licenses.md` file to include the new license information.
+
+1.  **Add the library**:
+    ```bash
+    poetry add <package_name>
+    ```
+2.  **Synchronize the license list**:
+    ```bash
+    # Ensure pip-licenses is installed (poetry install)
+    python3 tools/update_licenses.py
+    ```
+
+**Note**: For existing libraries, Renovate will automatically update the version numbers in `third_party_licenses.md` when it creates a dependency update PR. Manual synchronization is only required when adding or removing libraries.
+
 ### Contribution
 
 Fork this repository and send a Pull Request (PR) if you want to contribute.
