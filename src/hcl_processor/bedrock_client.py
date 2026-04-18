@@ -87,13 +87,19 @@ class BedrockProvider(LLMProvider):
             )
             aws_access_key_id = self.provider_settings.get(
                 "aws_access_key_id"
-            ) or os.getenv("AWS_ACCESS_KEY_ID")  # Use provider_settings
+            ) or os.getenv(
+                "AWS_ACCESS_KEY_ID"
+            )  # Use provider_settings
             aws_secret_access_key = self.provider_settings.get(
                 "aws_secret_access_key"
-            ) or os.getenv("AWS_SECRET_ACCESS_KEY")  # Use provider_settings
+            ) or os.getenv(
+                "AWS_SECRET_ACCESS_KEY"
+            )  # Use provider_settings
             aws_session_token = self.provider_settings.get(
                 "aws_session_token"
-            ) or os.getenv("AWS_SESSION_TOKEN")  # Use provider_settings
+            ) or os.getenv(
+                "AWS_SESSION_TOKEN"
+            )  # Use provider_settings
             if aws_access_key_id and aws_secret_access_key:
                 session = boto3.Session(
                     aws_access_key_id=aws_access_key_id,
