@@ -29,7 +29,7 @@ six = "1.17.0"
 tabulate = "0.10.0"
 tomli = "2.4.1"
 tzdata = "2026.1"
-wcwidth = "0.6.0"
+wcwidth = "0.7.0"
 
 [tool.poetry.scripts]
 hcl-processor = "hcl_processor.main:main"
